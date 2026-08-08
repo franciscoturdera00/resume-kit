@@ -11,6 +11,19 @@ Two paths. Ask which one applies:
 
 Either way, run `python3 <skill-dir>/scripts/kit.py init` first to create the directories.
 
+**Check that the home survives the session before you fill it.** Some hosts give each
+session a fresh sandbox that is destroyed when the session ends (Cowork cloud sessions
+work this way), and a master resume written there is gone by the next conversation. If
+the host works like that, ask the user for a folder that persists (a connected folder, a
+synced directory, anywhere they keep documents) and pin it first:
+
+```bash
+python3 <skill-dir>/scripts/kit.py set-home <folder>
+```
+
+An interview that has to be repeated because the file evaporated is the worst outcome
+this skill has.
+
 ## Path A: import an existing resume
 
 1. Ask for the file path or the pasted text. **PDF is the format to ask for**, because you can

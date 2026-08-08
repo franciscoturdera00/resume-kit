@@ -80,10 +80,24 @@ page count rather than assuming it.
 | | Works? |
 |---|---|
 | Claude Code (CLI, desktop, IDE) | Yes, the primary target |
-| Cowork | Yes, if the workspace persists files and can run Python |
+| Cowork | Yes, with one setup step: see below |
 | claude.ai chat | No. Nothing persists between conversations, so there's no master resume to build on |
 
 Requirements: Python 3.10+, and network access the first time dependencies install.
+
+**Cowork:** sub-agents are supported, so the review step gets an independent reviewer.
+The thing to get right is where the master lives. Cowork sessions run in the cloud by
+default and each session gets its own sandbox that is destroyed when the session ends, so
+a master resume written to `~/.resume-kit` inside that sandbox does not survive. Point the
+home at a location that persists (a connected folder in local execution, or a folder in
+your Claude account's files) before onboarding:
+
+```bash
+python3 scripts/kit.py set-home <persisted-folder>
+```
+
+Run `python3 scripts/kit.py paths` at the start of a later session; if `master_exists` is
+false when you know you built one, the home is pointing at ephemeral storage.
 
 ## Layout
 

@@ -1,12 +1,12 @@
 # resume-kit
 
 A Claude skill that keeps a **master resume** for you and generates **tailored one-page
-resume PDFs** for specific job postings.
+resumes** for specific job postings, as an editable `.docx` with a matching PDF.
 
 You give it a job posting (URL or pasted text). It selects from everything it knows
-about your career, rewrites it in that posting's vocabulary, renders a PDF, looks at the
-rendered page, and revises. The master resume persists between sessions and grows as you
-ship things — so the fifth resume is better than the first.
+about your career, rewrites it in that posting's vocabulary, renders the document, looks
+at the rendered page, and revises. The master resume persists between sessions and grows
+as you ship things, so the fifth resume is better than the first.
 
 No API keys. No accounts. No services. Your resume never leaves your machine.
 
@@ -31,7 +31,7 @@ themselves on first run. Without uv, run `bash scripts/setup.sh` once.
 
 ## First run
 
-If you have a resume, have it ready as a **PDF** (or text you can paste) — the skill
+If you have a resume, have it ready as a **PDF** (or text you can paste). The skill
 reads it and converts it. If you don't, it interviews you. Either way it ends with a
 validated `master_resume.json` and tells you what's in it.
 
@@ -49,7 +49,8 @@ touches your data:
   master_resume.json                     # the source of truth
   backups/                               # a snapshot before every edit
   output/<company>/<role>/
-    resume.pdf                           # the deliverable
+    resume.docx                          # the deliverable, edit it however you like
+    resume.pdf                           # same document, and what most applications want
     resume.page1.png, fit.json, tailored_resume.json, job_description.txt
 ```
 
@@ -57,45 +58,52 @@ Point it elsewhere with `python3 scripts/kit.py set-home <dir>` (or `$RESUME_KIT
 
 ## Day to day
 
-- *"Tailor my resume for this posting: <url>"* — the main loop.
-- *"Add this to my resume: I shipped X"* — additive update, with a backup first.
-- *"Is my resume kit working?"* — `python3 scripts/kit.py doctor`.
+- *"Tailor my resume for this posting: <url>"* is the main loop.
+- *"Add this to my resume: I shipped X"* does an additive update, with a backup first.
+- *"Is my resume kit working?"* runs `python3 scripts/kit.py doctor`.
 
 ## How the page gets to one page
 
 `scripts/render.py` does the layout itself: it measures the content, picks the
-typographic scale that fills exactly one page, and only trims if writing can't be made
-to fit — reporting whatever it dropped. So "one page" is a property of the renderer, not
-a thing the model has to keep re-checking. The model's job is content: what goes on the
-page, and whether the page answers the posting.
+typographic scale that fills exactly one page, and only trims if the writing can't be
+made to fit, reporting whatever it dropped. So "one page" is a property of the renderer,
+not a thing the model has to keep re-checking. The model's job is content: what goes on
+the page, and whether the page answers the posting.
+
+The .docx is built from the same solved geometry and names Calibri, which is
+metric-compatible with the Carlito the PDF embeds, so Word breaks the lines where the
+measured layout broke them. Where LibreOffice is installed, `--verify-docx` confirms the
+page count rather than assuming it.
 
 ## Where it runs
 
 | | Works? |
 |---|---|
-| Claude Code (CLI, desktop, IDE) | Yes — the primary target |
+| Claude Code (CLI, desktop, IDE) | Yes, the primary target |
 | Cowork | Yes, if the workspace persists files and can run Python |
-| claude.ai chat | No — nothing persists between conversations, so there's no master resume to build on |
+| claude.ai chat | No. Nothing persists between conversations, so there's no master resume to build on |
 
 Requirements: Python 3.10+, and network access the first time dependencies install.
 
 ## Layout
 
 ```
-SKILL.md                          entry point — routing and the tailoring loop
+SKILL.md                          entry point: routing and the tailoring loop
 references/
   onboarding.md                   first run: import a resume, or interview
   master-resume.md                schema + additive update rules
   tailoring.md                    how to write the tailored JSON
   review.md                       the checklist before anything is delivered
 scripts/
-  render.py                       tailored JSON -> one-page PDF (+ PNG, metrics)
+  render.py                       tailored JSON -> one-page .docx + PDF (+ PNG, metrics)
+  docx_out.py                     the editable copy, from the same solved geometry
+  prose.py                        house-style lint: no em dashes, no filler
   kit.py                          paths, validate, backup, doctor (stdlib only)
   setup.sh                        dependency install without uv
 assets/
   master_resume.example.json      complete valid master (fictional person)
   tailored_resume.example.json    complete valid tailored input
-  fonts/                          Carlito (SIL OFL 1.1) — embedded in every PDF
+  fonts/                          Carlito (SIL OFL 1.1), embedded in every PDF
 ```
 
 ## Credits

@@ -1,5 +1,5 @@
 {
-  "_comment": "Fictional example showing every field resume-kit uses. Delete this file's person and replace with your own during onboarding — do NOT edit this copy; it is the shipped reference.",
+  "_comment": "Fictional example showing every field resume-kit uses. Delete this file's person and replace with your own during onboarding. Do NOT edit this copy; it is the shipped reference.",
 
   "meta": {
     "name": "Jordan Rivera",
@@ -38,7 +38,7 @@
     },
     {
       "id": "data_platform",
-      "text": "Data platform engineer who has run streaming infrastructure at production scale — 1.2M events/sec through Kafka with exactly-once delivery — and built the self-serve tooling that let 40 analysts ship pipelines without filing tickets.",
+      "text": "Data platform engineer who has run streaming infrastructure at production scale (1.2M events/sec through Kafka with exactly-once delivery), and built the self-serve tooling that let 40 analysts ship pipelines without filing tickets.",
       "tags": ["data", "streaming", "kafka", "etl", "platform"],
       "priority": 1
     },
@@ -160,14 +160,14 @@
       "priority": 1,
       "versions": [
         {
-          "label": "v1 — CLI",
+          "label": "v1: CLI",
           "name": "Tracewell CLI",
           "description": "Built a single-binary CLI that replayed OpenTelemetry traces locally so developers could debug latency without a staging deploy.",
           "tech": ["Go", "OpenTelemetry"],
           "tags": ["observability", "go", "cli"]
         },
         {
-          "label": "v2 — hosted service",
+          "label": "v2: hosted service",
           "name": "Tracewell Cloud",
           "description": "Rebuilt Tracewell as a hosted service on ClickHouse with a React UI, scaling ingestion to 30k spans/sec on a three-node cluster.",
           "tech": ["Go", "ClickHouse", "React", "Kubernetes"],

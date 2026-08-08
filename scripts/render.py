@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["reportlab>=4.0", "pypdfium2>=4.0"]
+# dependencies = ["reportlab>=4.0", "pypdfium2>=4.0", "python-docx>=1.1.0"]
 # ///
 """Render a tailored resume JSON to a one-page PDF.
 
@@ -26,12 +26,15 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from prose import lint as prose_lint  # noqa: E402  (local, stdlib-only)
+
 try:
     from reportlab.lib.colors import HexColor
     from reportlab.lib.pagesizes import letter
     from reportlab.pdfbase.pdfmetrics import stringWidth
     from reportlab.pdfgen import canvas as rl_canvas
-except ImportError:  # hard failure — never degrade silently
+except ImportError:  # hard failure; never degrade silently
     sys.stderr.write(
         "resume-kit: reportlab is not installed.\n"
         "  With uv (no setup needed):  uv run scripts/render.py ...\n"
@@ -163,7 +166,7 @@ def line_height(line, lead: float) -> float:
 
 
 # ---------------------------------------------------------------------------
-# Layout — produces draw ops with y measured downward from the content top
+# Layout: produces draw ops with y measured downward from the content top
 # ---------------------------------------------------------------------------
 
 class Layout:
@@ -387,7 +390,7 @@ def solve(data: dict):
         if what is None:
             break
         trimmed.append(what)
-    # Nothing fits even trimmed — return the tightest attempt so the caller can
+    # Nothing fits even trimmed: return the tightest attempt so the caller can
     # report honestly rather than pretending.
     ctx = ctx_for(SCALES[-1])
     return build(data, ctx), ctx, trimmed
@@ -430,7 +433,7 @@ def _draw_page(c, ops, page: int):
             to = c.beginText(MARGIN_X + x, top - y)
             to.setFont(font, size)
             to.setFillColor(HexColor(color))
-            # Tc persists in the content stream across text objects — always set
+            # Tc persists in the content stream across text objects, always set
             # it, or the letterspaced name leaks into every line below it.
             to.setCharSpace(charspace)
             to.textOut(text)
@@ -440,6 +443,38 @@ def _draw_page(c, ops, page: int):
             c.setStrokeColor(HexColor(color))
             c.setLineWidth(th)
             c.line(MARGIN_X + x0, top - y, MARGIN_X + x0 + w, top - y)
+
+
+def _docx_page_count(docx_path: Path):
+    """Page count of the DOCX as a word processor lays it out, or None.
+
+    Uses LibreOffice when present. Optional by design: the whole point of the
+    reportlab fit solver is that no office suite is required.
+    """
+    import shutil
+    import subprocess
+    import tempfile
+
+    soffice = shutil.which("soffice") or shutil.which("libreoffice")
+    if not soffice:
+        return None
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            subprocess.run(
+                [soffice, f"-env:UserInstallation=file://{tmp}/profile", "--headless",
+                 "--convert-to", "pdf", "--outdir", tmp, str(docx_path)],
+                capture_output=True, check=True, timeout=180,
+            )
+            out = Path(tmp) / (docx_path.stem + ".pdf")
+            if not out.exists():
+                return None
+            import pypdfium2 as pdfium
+            doc = pdfium.PdfDocument(str(out))
+            n = len(doc)
+            doc.close()
+            return n
+    except Exception:
+        return None
 
 
 def rasterize(pdf_path: Path, png_path: Path, dpi: int = 110) -> bool:
@@ -464,6 +499,10 @@ def main():
     ap.add_argument("--out-dir", required=True, help="Directory to write resume.pdf into")
     ap.add_argument("--basename", default="resume")
     ap.add_argument("--no-png", action="store_true", help="Skip the page-1 PNG preview")
+    ap.add_argument("--no-docx", action="store_true", help="Skip the editable .docx")
+    ap.add_argument("--verify-docx", action="store_true",
+                    help="Confirm the .docx is one page by laying it out in LibreOffice "
+                         "(slow, and only possible where soffice is installed)")
     args = ap.parse_args()
 
     data = json.loads(Path(args.tailored).read_text())
@@ -473,7 +512,17 @@ def main():
     lay, ctx, trimmed = solve(data)
     pdf_path = out_dir / f"{args.basename}.pdf"
     name = data.get("meta", {}).get("name", "Resume")
-    pages = draw(lay, pdf_path, title=f"{name} — Resume")
+    pages = draw(lay, pdf_path, title=f"{name}, Resume")
+
+    docx_path = None
+    docx_error = None
+    if not args.no_docx:
+        try:
+            from docx_out import render_docx
+            docx_path = render_docx(data, ctx, out_dir / f"{args.basename}.docx")
+        except ImportError:
+            docx_error = ("python-docx is not installed, so no editable .docx was "
+                          "written. Install it, or run with --no-docx to silence this.")
 
     # solve() trims in place; keep the JSON that ships next to the PDF equal to
     # the JSON that produced it.
@@ -485,11 +534,11 @@ def main():
     if pages > 1:
         warnings.append(
             f"OVERFLOW: content runs to {pages} pages at the tightest scale after "
-            f"{len(trimmed)} trims. NOT DELIVERABLE — cut content and re-render."
+            f"{len(trimmed)} trims. NOT DELIVERABLE: cut content and re-render."
         )
     if fill < 0.85:
         warnings.append(
-            f"UNDERFILLED: page is {int(fill * 100)}% full. Add content — roughly "
+            f"UNDERFILLED: page is {int(fill * 100)}% full. Add content: roughly "
             f"{int((USABLE_H - lay.y) / (ctx['body'] * ctx['lead']))} more lines fit."
         )
     if trimmed:
@@ -497,6 +546,13 @@ def main():
             f"TRIMMED {len(trimmed)} item(s) to fit (and rewrote {args.tailored} to "
             "match). Prefer writing shorter content over letting the renderer choose "
             "what to drop."
+        )
+
+    prose = prose_lint(data, "tailored")
+    if prose:
+        warnings.append(
+            f"PROSE: {len(prose)} field(s) break the house style (no em dashes, no "
+            "filler). Fix the text and re-render; see prose[] below."
         )
 
     png_path = out_dir / f"{args.basename}.page1.png"
@@ -507,7 +563,26 @@ def main():
             "must be skipped (PDF is still valid)."
         )
 
+    if docx_error:
+        warnings.append(docx_error)
+
+    docx_pages = None
+    if docx_path and args.verify_docx:
+        docx_pages = _docx_page_count(docx_path)
+        if docx_pages is None:
+            warnings.append(
+                "DOCX page count unverified: LibreOffice (soffice) is not installed. "
+                "The PDF is the proof of fit; Word may lay the .docx out slightly "
+                "differently."
+            )
+        elif docx_pages != 1:
+            warnings.append(
+                f"DOCX RUNS TO {docx_pages} PAGES even though the PDF fits. Cut content "
+                "and re-render; do not hand over the .docx."
+            )
+
     metrics = {
+        "docx": str(docx_path) if docx_path else None,
         "pdf": str(pdf_path),
         "png": str(png_path) if png_ok else None,
         "deliverable": pages == 1,
@@ -517,7 +592,9 @@ def main():
         "content_height_pt": round(lay.y, 1),
         "usable_height_pt": round(USABLE_H, 1),
         "lines_of_room": max(0, int((USABLE_H - lay.y) / (ctx["body"] * ctx["lead"]))),
+        "docx_pages": docx_pages,
         "trimmed": trimmed,
+        "prose": prose,
         "warnings": warnings,
     }
     (out_dir / "fit.json").write_text(json.dumps(metrics, indent=2))

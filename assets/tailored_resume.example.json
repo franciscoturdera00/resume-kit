@@ -14,7 +14,7 @@
     "github": "github.com/example-jrivera"
   },
 
-  "summary": "Backend engineer with six years building services that stay up: cut p99 latency 60% on a 4B-request/month API, and led the migration off a 400k-line monolith without a customer-visible incident. Owns systems end to end — schema design, rollout, tracing, and on-call — and has built the platform tooling other teams depend on.",
+  "summary": "Backend engineer with six years building services that stay up: cut p99 latency 60% on a 4B-request/month API, and led the migration off a 400k-line monolith without a customer-visible incident. Owns systems end to end, from schema design and rollout through tracing and on-call, and has built the platform tooling other teams depend on.",
 
   "experience": [
     {
@@ -62,7 +62,7 @@
 
   "projects": [
     {
-      "name": "Tracewell (v2 — hosted service)",
+      "name": "Tracewell (v2, hosted service)",
       "tech": ["Go", "ClickHouse", "React", "Kubernetes"],
       "description": "Rebuilt an open-source trace explorer as a hosted service on ClickHouse, scaling ingestion to 30k spans/sec on a three-node cluster; 1.4k GitHub stars and three production users."
     },

@@ -1,8 +1,8 @@
-# The master resume — schema and update rules
+# The master resume: schema and update rules
 
 The master is append-mostly career state. Tailoring selects from it; nothing selects
 *into* it except deliberate updates. `assets/master_resume.example.json` is a complete
-valid instance — read it when the shape is unclear.
+valid instance. Read it when the shape is unclear.
 
 ## Schema
 
@@ -30,7 +30,7 @@ valid instance — read it when the shape is unclear.
 }
 ```
 
-`id` values are stable handles — never renumber or reuse them. `priority`: 1
+`id` values are stable handles. Never renumber or reuse them. `priority`: 1
 career-defining, 2 solid, 3 filler. Dates are display strings (`"Mar 2022"`,
 `"Present"`), rendered as written.
 
@@ -47,7 +47,7 @@ it.
 
 ```bash
 python3 <skill-dir>/scripts/kit.py backup      # always first
-# edit with Edit, never Write — the file is large and a full rewrite loses sections
+# edit with Edit, never Write. A full rewrite of a file this large loses sections
 python3 <skill-dir>/scripts/kit.py validate    # always last
 ```
 
@@ -56,35 +56,38 @@ Then tell the user in one line what changed and where. No JSON dumps.
 ### Rules
 
 1. **Additive by default.** Add bullets, projects, versions, tech, tags. Don't delete
-   history — an old role or a superseded architecture is range, and tailoring already
+   history. An old role or a superseded architecture is range, and tailoring already
    ignores what doesn't match. Deletion is for things that are *wrong*, and for
    corrections the user explicitly asked for.
 2. **Strongest honest framing.** Lead with impact, use active verbs, quantify with real
-   numbers. Never "helped with" or "assisted in" — say what was built and what changed.
-3. **Truth is the constraint.** Positive framing is not invention. Every claim traces to
+   numbers. Never "helped with" or "assisted in": say what was built and what changed.
+3. **House voice: no em dashes, no filler.** This text ends up on resumes verbatim, so
+   the rule that governs a tailored page governs what you write here. Use a comma or a
+   colon instead of an em dash; cut `actually`, `leverage`, `successfully`, `seamless`,
+   and the rest. `kit.py validate` flags what it can detect.
+4. **Truth is the constraint.** Positive framing is not invention. Every claim traces to
    something the user actually did. No fabricated metrics, customers, or scale. Without
    a real number, use qualitative strength ("production", "multi-tenant", "end-to-end").
-4. **Tag every addition** (3-6 tags: technology, domain, kind of work). Untagged content
+5. **Tag every addition** (3-6 tags: technology, domain, kind of work). Untagged content
    is invisible to tailoring.
-5. **Mirror the existing shape.** Match field names and nesting exactly; don't invent
+6. **Mirror the existing shape.** Match field names and nesting exactly; don't invent
    top-level fields.
-6. **When a versioned project evolves**, append to `versions` *and* merge any new tech
-   and tags into the project's top-level `tech`/`tags` (deduped) — both are read.
-7. **Don't rewrite existing entries to match a new tone**, and don't lower a `priority`
+7. **When a versioned project evolves**, append to `versions` *and* merge any new tech
+   and tags into the project's top-level `tech`/`tags` (deduped). Both are read.
+8. **Don't rewrite existing entries to match a new tone**, and don't lower a `priority`
    just because something newer exists.
-8. **`meta`, `education`, and `certifications` change only when the user says so.**
+9. **`meta`, `education`, and `certifications` change only when the user says so.**
 
 ### When to offer an update
 
 If the user mentions shipping something, a new number becoming real, a role or title
-change, or a technology they've now used in earnest — offer to record it, in one line.
+change, or a technology they've now used in earnest, offer to record it in one line.
 Don't wait to be asked, and don't edit without a yes.
 
 ### Tone
 
 Weak: "Helped build a resume tool." · "Worked on a trading bot." · "Made improvements."
 
-Strong: "Shipped a resume-tailoring pipeline with a deterministic one-page layout
-engine and a writer/critic loop." · "Built an event-driven trading system that parses
-earnings transcripts with an LLM and calibrates position sizing on backtested win
-rates."
+Strong: "Shipped a resume-tailoring pipeline with a deterministic one-page layout engine
+and a writer/critic loop." · "Built an event-driven trading system that parses earnings
+transcripts with an LLM and calibrates position sizing on backtested win rates."

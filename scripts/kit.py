@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""resume-kit state + integrity helper. Standard library only — always runnable.
+"""resume-kit state + integrity helper. Standard library only, so it always runs.
 
 Commands:
     paths                 Resolve where the master resume and outputs live
@@ -24,6 +24,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from prose import lint as prose_lint  # noqa: E402
+
 KIT_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = Path.home() / ".config" / "resume-kit" / "config.json"
 DEFAULT_HOME = Path.home() / ".resume-kit"
@@ -31,7 +34,7 @@ MAX_BACKUPS = 20
 
 
 # ---------------------------------------------------------------------------
-# Home resolution — never depends on the current working directory
+# Home resolution, never depends on the current working directory
 # ---------------------------------------------------------------------------
 
 def resolve_home() -> tuple[Path, list[str]]:
@@ -52,7 +55,7 @@ def resolve_home() -> tuple[Path, list[str]]:
     if env and cfg and Path(env).expanduser() != Path(cfg).expanduser():
         warnings.append(
             f"CONFLICT: $RESUME_KIT_HOME={env} overrides config home={cfg}. "
-            "Two master resumes may exist — reconcile them before editing."
+            "Two master resumes may exist: reconcile them before editing."
         )
     home = Path(env or cfg or DEFAULT_HOME).expanduser()
     return home, warnings
@@ -82,21 +85,21 @@ def validate_master(data) -> tuple[list[str], list[str]]:
     _require(meta.get("email"), "meta.email is missing", errors)
     for optional in ("phone", "location", "linkedin", "github"):
         if not meta.get(optional):
-            warns.append(f"meta.{optional} is empty — the contact line will omit it")
+            warns.append(f"meta.{optional} is empty, the contact line will omit it")
 
     titles = data.get("titles") or []
     summaries = data.get("summaries") or []
-    _require(len(titles) >= 1, "titles[] is empty — need at least one headline variant", errors)
-    _require(len(summaries) >= 1, "summaries[] is empty — need at least one summary variant", errors)
+    _require(len(titles) >= 1, "titles[] is empty: need at least one headline variant", errors)
+    _require(len(summaries) >= 1, "summaries[] is empty: need at least one summary variant", errors)
     if len(titles) == 1:
-        warns.append("only one title variant — 2-3 variants let tailoring position you per role")
+        warns.append("only one title variant: 2-3 variants let tailoring position you per role")
     if len(summaries) == 1:
-        warns.append("only one summary variant — 2-3 variants give tailoring room to reposition")
+        warns.append("only one summary variant: 2-3 variants give tailoring room to reposition")
 
     all_tags = []
     for i, t in enumerate(titles):
         _require(t.get("text"), f"titles[{i}].text is missing", errors)
-        _require(t.get("tags"), f"titles[{i}].tags is missing — untagged variants never get picked", errors)
+        _require(t.get("tags"), f"titles[{i}].tags is missing: untagged variants never get picked", errors)
         all_tags += t.get("tags") or []
     for i, s in enumerate(summaries):
         _require(s.get("text"), f"summaries[{i}].text is missing", errors)
@@ -124,7 +127,7 @@ def validate_master(data) -> tuple[list[str], list[str]]:
             _require(b.get("text"), f"experience[{i}].bullets[{j}].text is missing", errors)
             if not b.get("tags"):
                 warns.append(
-                    f"experience[{i}].bullets[{j}] is untagged — tailoring will rarely select it"
+                    f"experience[{i}].bullets[{j}] is untagged: tailoring will rarely select it"
                 )
             all_tags += b.get("tags") or []
 
@@ -132,7 +135,7 @@ def validate_master(data) -> tuple[list[str], list[str]]:
         _require(p.get("name"), f"projects[{i}].name is missing", errors)
         _require(p.get("description"), f"projects[{i}].description is missing", errors)
         if not p.get("tags"):
-            warns.append(f"projects[{i}] ({p.get('name', '?')}) is untagged — it will rarely be selected")
+            warns.append(f"projects[{i}] ({p.get('name', '?')}) is untagged: it will rarely be selected")
         all_tags += p.get("tags") or []
         for k, v in enumerate(p.get("versions") or []):
             _require(v.get("description"), f"projects[{i}].versions[{k}].description is missing", errors)
@@ -156,8 +159,11 @@ def validate_master(data) -> tuple[list[str], list[str]]:
         if near:
             warns.append(
                 f"tag '{tag}' (used once) looks like a typo of '{near[0]}' "
-                f"(used {counts[near[0]]}x) — unify them or tailoring will skip that content"
+                f"(used {counts[near[0]]}x). Unify them, or tailoring will skip that content."
             )
+
+    # House style: content written here propagates into every future resume.
+    warns += prose_lint(data, "master")
     return errors, warns
 
 
@@ -257,10 +263,12 @@ def cmd_doctor(args):
         "renderer deps",
         bool(uv) or have_reportlab,
         f"uv={'yes' if uv else 'no'} reportlab-in-this-python={'yes' if have_reportlab else 'no'}"
-        + ("" if (uv or have_reportlab) else " — install uv, or run scripts/setup.sh"),
+        + ("" if (uv or have_reportlab) else " install uv, or run scripts/setup.sh"),
     )
     check("png preview (optional)", bool(uv) or _importable("pypdfium2"),
           "without uv or pypdfium2 the visual review step is skipped")
+    check("docx output", bool(uv) or _importable("docx"),
+          "python-docx writes the editable deliverable")
 
     fonts = KIT_ROOT / "assets" / "fonts"
     check("bundled fonts", (fonts / "Carlito-Regular.ttf").exists()
@@ -278,7 +286,7 @@ def cmd_doctor(args):
     else:
         report["checks"].append({
             "check": "master resume present", "ok": False,
-            "detail": f"none at {mp} — first run will build one (this is expected on a fresh install)",
+            "detail": f"none at {mp} first run will build one (this is expected on a fresh install)",
         })
 
     # End-to-end: render the shipped example.
@@ -291,9 +299,10 @@ def cmd_doctor(args):
                    else [sys.executable, str(KIT_ROOT / "scripts" / "render.py")])
             cmd += ["--tailored", str(tailored_example), "--out-dir", tmp]
             proc = subprocess.run(cmd, capture_output=True, text=True)
-            ok = proc.returncode == 0 and (Path(tmp) / "resume.pdf").exists()
+            ok = (proc.returncode == 0 and (Path(tmp) / "resume.pdf").exists()
+                  and (Path(tmp) / "resume.docx").exists())
             check("example renders", ok,
-                  (proc.stderr or proc.stdout).strip().splitlines()[-1] if not ok else "one-page PDF produced")
+                  (proc.stderr or proc.stdout).strip().splitlines()[-1] if not ok else "one-page PDF + editable DOCX produced")
     check("example master present", example.exists(), str(example))
 
     print(json.dumps(report, indent=2))

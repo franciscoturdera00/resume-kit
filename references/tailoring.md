@@ -70,10 +70,22 @@ passing the lint is the floor, not the goal.
 
 ## Length
 
-Aim for **420-520 words** across summary + all bullets + project descriptions. The
-renderer fits whatever you write onto one page and tells you how full it is, so write
-for a full page, then adjust from the measured `fill`. An underfilled page reads as a thin
-career; a page the renderer had to trim reads as someone else's edit.
+Aim for **420-520 words** across summary + all bullets + project descriptions, then let
+the measurement correct you. The word count is a starting guess; `room_at_min_body` in
+`fit.json` is the fact. An underfilled page reads as a thin career; a page the renderer
+had to trim reads as someone else's edit.
+
+**Write to fill the page.** The target is the most relevant content that fits, not the
+least content that looks tidy. After the first render, keep going while `ROOM` is set:
+add the next strongest thing from the master, re-render, repeat. Stop when the warning
+clears or the addition causes a `TRIMMED`, and if it trims, take the item back out.
+
+What to reach for, in order, is whatever answers the posting next: a requirement the
+draft leaves MISSING, another bullet on the role that matches the posting, a project
+whose tags line up, a metric sitting unused in the master. What not to reach for is
+filler: an extra skill nobody asked for, a fourth bullet on a job from 2020, a longer
+version of a sentence that was already complete. If the master has nothing left worth
+adding, say so to the user and offer to enrich the master, rather than padding the page.
 
 Keep bullets to 1-2 rendered lines. Three-line bullets stop being read.
 

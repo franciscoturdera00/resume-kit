@@ -53,7 +53,10 @@ Open the posting and the tailored JSON side by side.
 Read `resume.page1.png`. Look at it; don't infer it from the JSON.
 
 6. **Fill.** Is the bottom margin the same as the top, or is there a dead band? Check
-   against `fit.json`'s `fill` and `lines_of_room`.
+   against `fit.json`'s `page_is_full` and `room_at_min_body`, not `fill`: `fill`
+   measures the page against the size the fitter happened to choose, so it reads high
+   on a page that still has room. If `page_is_full` is `false`, name the specific
+   master entry going in next and re-render before reviewing anything else.
 7. **Bullet shape.** Any bullet running to three lines? Any one-line orphan trailing a
    long bullet? Any line ending with a single dangling word?
 8. **Balance.** Does one section dominate for no reason? Does the most relevant role

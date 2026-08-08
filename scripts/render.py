@@ -48,7 +48,7 @@ except ImportError:  # hard failure; never degrade silently
 # ---------------------------------------------------------------------------
 
 PAGE_W, PAGE_H = letter
-MARGIN_X = 0.7 * 72
+MARGIN_X = 0.5 * 72
 MARGIN_TOP = 0.5 * 72
 MARGIN_BOTTOM = 0.5 * 72
 USABLE_W = PAGE_W - 2 * MARGIN_X
@@ -82,8 +82,26 @@ def _register_fonts() -> tuple[str, str]:
 REG, BOLD = _register_fonts()
 
 # Scales tried largest-first. Above 1.0 the page gets airier, below it tighter.
-SCALES = [1.10, 1.06, 1.03, 1.00, 0.97, 0.94, 0.91, 0.88, 0.85]
+BODY_PT = 10.5              # body text size at scale 1.0; every other size keys off it
+MIN_BODY_PT = 9.5           # floor: never render body text smaller than this
+SCALE_LADDER = [1.10, 1.06, 1.03, 1.00, 0.97, 0.94, 0.91, 0.88, 0.85]
 MAX_TRIMS = 12
+# Lines of unused capacity (measured at the floor) that count as a page worth
+# filling. One line is a rounding artifact; two is a bullet the page could carry.
+ROOM_SLACK_LINES = 2
+
+
+def scales_for(min_body_pt: float) -> list:
+    """The ladder, cut off where body text would fall below the floor.
+
+    Below the floor the answer is less content, not smaller type, so solve()
+    trims instead of shrinking. Always returns at least one rung.
+    """
+    allowed = [s for s in SCALE_LADDER if BODY_PT * s >= min_body_pt - 1e-9]
+    return allowed or [SCALE_LADDER[0]]
+
+
+SCALES = scales_for(MIN_BODY_PT)
 
 
 def ctx_for(scale: float) -> dict:
@@ -94,10 +112,10 @@ def ctx_for(scale: float) -> dict:
         "name": 20 * s,
         "headline": 11.5 * s,
         "contact": 8.5 * s,
-        "body": 10.5 * s,
+        "body": BODY_PT * s,
         "meta_small": 10 * s,
         "section": 11.5 * s,
-        "lead": 1.20,  # line-height multiplier
+        "lead": 1.12,  # line-height multiplier (tightened so 9.5pt type still fits a full page)
         "sp_after_name": 2 * s,
         "sp_after_headline": 3 * s,
         "sp_after_contact": 7 * s,
@@ -503,7 +521,13 @@ def main():
     ap.add_argument("--verify-docx", action="store_true",
                     help="Confirm the .docx is one page by laying it out in LibreOffice "
                          "(slow, and only possible where soffice is installed)")
+    ap.add_argument("--min-body-pt", type=float, default=MIN_BODY_PT,
+                    help=f"Floor on body text size in points (default {MIN_BODY_PT}). "
+                         "Below this the renderer trims content instead of shrinking type.")
     args = ap.parse_args()
+
+    global SCALES
+    SCALES = scales_for(args.min_body_pt)
 
     data = json.loads(Path(args.tailored).read_text())
     out_dir = Path(args.out_dir).expanduser()
@@ -530,6 +554,23 @@ def main():
         Path(args.tailored).write_text(json.dumps(data, indent=2))
 
     fill = lay.y / USABLE_H
+
+    # Headroom, measured at the tightest rung rather than at the one that won.
+    #
+    # The fitter takes the largest scale that fits, so a page can report fill
+    # 0.96 with two lines of room and still have four or five lines of real
+    # capacity: the fitter would drop a rung and buy that space with type size
+    # if there were content to justify it. `lines_of_room` answers "what fits at
+    # this size", which understates the page. `room_at_min_body` answers the
+    # question that decides whether to keep writing, so the warning keys off it.
+    if trimmed or pages > 1:
+        room_at_min = 0          # already at or past capacity, nothing more fits
+    else:
+        min_ctx = ctx_for(SCALES[-1])
+        min_lay = build(data, min_ctx)
+        room_at_min = max(0, int((USABLE_H - min_lay.y)
+                                 / (min_ctx["body"] * min_ctx["lead"])))
+
     warnings = []
     if pages > 1:
         warnings.append(
@@ -540,6 +581,14 @@ def main():
         warnings.append(
             f"UNDERFILLED: page is {int(fill * 100)}% full. Add content: roughly "
             f"{int((USABLE_H - lay.y) / (ctx['body'] * ctx['lead']))} more lines fit."
+        )
+    if room_at_min >= ROOM_SLACK_LINES:
+        warnings.append(
+            f"ROOM: about {room_at_min} more lines of content fit at the "
+            f"{args.min_body_pt}pt floor. The page is not full yet. Add the next "
+            "strongest content from the master (a bullet the posting asks for, a "
+            "project, a role that earns its space) and re-render. Stop when this "
+            "warning is gone or adding one more item causes a trim."
         )
     if trimmed:
         warnings.append(
@@ -589,9 +638,13 @@ def main():
         "pages": pages,
         "fill": round(fill, 3),
         "scale": ctx["scale"],
+        "body_pt": round(ctx["body"], 2),
+        "min_body_pt": args.min_body_pt,
         "content_height_pt": round(lay.y, 1),
         "usable_height_pt": round(USABLE_H, 1),
         "lines_of_room": max(0, int((USABLE_H - lay.y) / (ctx["body"] * ctx["lead"]))),
+        "room_at_min_body": room_at_min,
+        "page_is_full": room_at_min < ROOM_SLACK_LINES,
         "docx_pages": docx_pages,
         "trimmed": trimmed,
         "prose": prose,

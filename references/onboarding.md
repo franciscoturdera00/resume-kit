@@ -1,5 +1,13 @@
 # First run: building the master resume
 
+**Stop if you have not run `kit.py locate` yet.** An empty home directory is not evidence
+of a first run, only of an empty home directory. Follow **When the master is missing** in
+`SKILL.md` first: search, check any connected or synced folders this host exposes, and ask
+the user outright whether they have used this kit before. Everything below assumes all
+three came back empty. Re-running this interview on top of a master that already exists
+destroys work the user has already done, and they will not remember the details well
+enough to reproduce it.
+
 Goal: a validated `master_resume.json` in the state directory. Everything else in this
 skill depends on it, so this step is worth doing slowly and asking real questions.
 
@@ -20,6 +28,12 @@ synced directory, anywhere they keep documents) and pin it first:
 ```bash
 python3 <skill-dir>/scripts/kit.py set-home <folder>
 ```
+
+Where the host can only reach the user's storage through a file-transfer bridge rather
+than a real path, `set-home` cannot help. Keep the home local, and write the finished
+master back to the user's folder before the session ends, every time it changes. Leave a
+short note in that folder saying where the master is and that an empty home is not a
+first run, so the next session loads it instead of asking these questions again.
 
 An interview that has to be repeated because the file evaporated is the worst outcome
 this skill has.
@@ -90,6 +104,16 @@ python3 <skill-dir>/scripts/kit.py validate
 
 Fix every error; read the warnings and fix the ones that are real (a flagged tag typo is
 always real, since it quietly removes that content from every future tailoring pass).
+
+Then leave the note, so the work you just did is findable next time:
+
+```bash
+python3 <skill-dir>/scripts/kit.py note <the-folder-holding-the-master>
+```
+
+If that folder is only reachable over a file-transfer bridge, add `--out ./CLAUDE.md` and
+transfer the result yourself. Skipping this is how the next session ends up running this
+interview again.
 
 Then show the user a short summary of what's in the file: how many roles, bullets,
 projects, and which title variants exist. Offer to generate a resume for a specific job

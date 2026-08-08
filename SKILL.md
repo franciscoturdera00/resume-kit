@@ -25,11 +25,54 @@ done
 
 Stdlib only, always runs. It prints `master`, `master_exists`, `output_dir`, and `kit_root`. **`kit_root` is this skill's absolute directory; substitute it for `<skill-dir>` everywhere below.** Surface any `warnings` it returns.
 
-- `master_exists: false` means **first run**. Read `references/onboarding.md` and build the master before anything else. Do not tailor against a resume that doesn't exist yet, and do not invent one.
 - `master_exists: true` means route by what was asked:
   - tailor for a job, see **Tailoring** below
   - record new work or fix a detail, see `references/master-resume.md`
   - "is this working?" or something broke, run `python3 <skill-dir>/scripts/kit.py doctor`
+- `master_exists: false` does **not** mean first run. Go to **When the master is missing** first.
+
+## When the master is missing
+
+`master_exists: false` means the master is not in the home directory *right now*. That is not the same as the user never having built one, and the two get confused constantly, because a home directory is only as durable as the machine under it. Cloud agent sessions, containers, CI runners, and reinstalls all hand you an empty filesystem that looks exactly like a fresh install.
+
+Rebuilding a master that already exists is the worst thing this skill can do. It costs the user an hour of interview they already sat through, and the replacement is worse than the original, because they will not remember every number the first pass captured.
+
+So look before you conclude:
+
+```bash
+python3 <skill-dir>/scripts/kit.py locate
+```
+
+It searches the home, the working directory, the usual document and cloud-sync folders, and the staging paths agent sandboxes use for connected folders. Route on `verdict`:
+
+| `verdict` | What it means | Do this |
+|---|---|---|
+| `adopt` | One usable master found outside the home | `kit.py adopt <path>`, then carry on with what was asked |
+| `ambiguous` | Several usable masters | Show the user paths, dates, and role counts. Let them choose. Never merge silently |
+| `found_but_invalid` | Files exist, none validate | Read the errors and repair. A broken master is worth more than a fresh interview |
+| `none_found` | Nothing on this filesystem | Keep going below. Do not onboard yet |
+
+`none_found` still isn't proof. `locate` only sees this filesystem, and the user's own storage may not be on it. Before onboarding, check whatever this host gives you: folders the user connected to the session, mounted or synced directories, anything they have attached to the conversation. Then ask them plainly: *have you used this before, and is there a `master_resume.json` somewhere I should load?* One question costs a sentence. Guessing wrong costs an hour.
+
+Only when that comes back empty is it a genuine first run. Then read `references/onboarding.md` and build the master. Do not tailor against a resume that doesn't exist, and do not invent one.
+
+**If the home is ephemeral, fix that before filling it.** When the session's filesystem will not survive (a cloud sandbox, a container), the master must live somewhere the user keeps: a connected folder, a synced directory, anywhere they store documents.
+
+```bash
+python3 <skill-dir>/scripts/kit.py set-home <that-folder>
+```
+
+Where the skill can only reach the user's storage through a file-transfer bridge rather than a real path, the home stays local and every edit has to be written back to the user's copy before the session ends. Say so out loud when you finish.
+
+**Then leave a note in that folder, every time.** This is what stops the next session repeating the search you just did:
+
+```bash
+python3 <skill-dir>/scripts/kit.py note <the-durable-folder>
+# folder only reachable over a bridge? write it locally and transfer it yourself:
+python3 <skill-dir>/scripts/kit.py note <the-durable-folder> --out ./CLAUDE.md
+```
+
+It writes a `CLAUDE.md` explaining where the master is, that an empty home is not a first run, and how to load and save it. Running it again updates its own block and leaves the rest of an existing `CLAUDE.md` alone, so it is safe to call on every session that touches the master. Do it after onboarding, after adopting, and after any session where the master's location changed.
 
 ## Tailoring
 
@@ -55,7 +98,7 @@ Pass `--verify-docx` on the final render: where LibreOffice is installed it lays
 
 **5. Review before showing anything.** Read the PNG (actually look at it) and work through `references/review.md`, which dispatches the content half to a separate reviewer where the host supports one. Skipping this step is how a resume that reads as generic reaches the user.
 
-**6. Revise at most twice.** Fix content, re-render, re-review. Then stop and report honestly, including what you couldn't fix.
+**6. Fill the page, then revise at most twice.** A `ROOM` warning means the page still has capacity: add the next strongest content from the master and re-render, repeating until the warning clears or the next addition causes a trim. Filling the page is not a revision, it is finishing the draft, so it does not count against the two. Then fix content, re-render, re-review, and stop, reporting honestly what you couldn't fix.
 
 **7. Report** the .docx path, the PDF beside it, company and role, page fill, and anything the review flagged. Don't paste the JSON.
 
@@ -63,15 +106,18 @@ Pass `--verify-docx` on the final render: where LibreOffice is installed it lays
 
 | Signal | Meaning | Action |
 |---|---|---|
-| `warnings: []`, `fill` 0.90-1.00 | Page is full, nothing was dropped | Ship it |
+| `warnings: []`, `page_is_full: true` | Nothing was dropped, nothing more fits | Ship it |
+| `ROOM` | The page has capacity left | Add content from the master and re-render, until it clears |
 | `prose[]` non-empty | Em dash or filler words in the text | Rewrite those fields, they are house-style violations |
-| `UNDERFILLED` | Thin content, empty space at the bottom | Add a bullet or project; `lines_of_room` says how much fits |
+| `UNDERFILLED` | Thin content, empty space at the bottom | Add a bullet or project; `room_at_min_body` says how much fits |
 | `TRIMMED` | The renderer dropped content to fit | Rewrite shorter yourself, you choose better than it does |
 | `OVERFLOW` | Doesn't fit even trimmed | Cut a whole entry, re-render |
 | `docx_pages` > 1 | Word lays it out longer than the PDF does | Cut content; do not hand over the .docx |
-| `fill` < 0.85 after two revisions | Master is thin | Say so, and offer to enrich the master |
+| `ROOM` still set after adding everything relevant | Master is thin | Say so, and offer to enrich the master |
 
-`scale` is the typographic size the fitter settled on. Low values (0.88-0.91) mean the page is packed, which is a signal to write tighter, not a defect.
+`scale` is the typographic size the fitter settled on, and `body_pt` is what that means in points. Body text never renders below `min_body_pt` (9.5pt by default, override with `--min-body-pt`). Once the floor is reached the renderer trims content instead of shrinking type, so `TRIMMED` at the lowest scale means the page is genuinely too full: cut content, do not reach for smaller type. Margins are 0.5in on all four sides, in both the PDF and the .docx.
+
+**Read `room_at_min_body`, not `fill`.** The fitter takes the largest scale that fits, so `fill` measures the page against whatever size it settled on, and a page at `fill` 0.96 can still have four or five lines of unused capacity: the fitter will drop a rung and buy that space with type size once there is content to justify it. `room_at_min_body` is the honest number, the lines that still fit at the floor, and `page_is_full` is that number being under two. A page is done when `page_is_full` is `true` and `trimmed` is empty. Do not stop earlier because `fill` looked high.
 
 ## Dependencies
 
@@ -89,5 +135,5 @@ Both need network access once. `reportlab` is required. `python-docx` writes the
 - **No em dashes, no filler words**, in the resume and in anything written to the master. See `references/tailoring.md`; `render.py` and `kit.py validate` both lint for it.
 - **Back up before editing the master**: `python3 <skill-dir>/scripts/kit.py backup`, then edit, then `validate`.
 - **Never write user data into the skill directory.** Everything stateful goes to the home directory `kit.py paths` reports. `assets/*.example.json` are read-only references, not the user's resume.
-- **One page.** Not a preference, the renderer enforces it.
+- **One page, and a full one.** Both halves are enforced: the renderer guarantees the page, and `ROOM` says when it is not yet full. An underfilled page wastes the only page the candidate gets, so keep adding the strongest remaining content until the next item would trim. Full never means padded: everything on the page still has to earn its line against the posting.
 - Generated resumes are disposable; the master is not.

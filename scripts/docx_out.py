@@ -65,7 +65,7 @@ def _setup_page(doc):
     s = doc.sections[0]
     s.page_width, s.page_height = Inches(8.5), Inches(11)
     s.top_margin = s.bottom_margin = Inches(0.5)
-    s.left_margin = s.right_margin = Inches(0.7)
+    s.left_margin = s.right_margin = Inches(0.5)
     normal = doc.styles["Normal"]
     normal.font.name = FONT
     rPr = normal.element.get_or_add_rPr()

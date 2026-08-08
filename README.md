@@ -12,14 +12,20 @@ No API keys. No accounts. No services. Your resume never leaves your machine.
 
 ## Install
 
-Copy this directory into your skills folder:
+Clone straight into your skills folder:
 
 ```bash
 # available in every project
-cp -r resume-kit ~/.claude/skills/resume-kit
+git clone https://github.com/franciscoturdera00/resume-kit.git ~/.claude/skills/resume-kit
 
 # or just one project
-cp -r resume-kit <project>/.claude/skills/resume-kit
+git clone https://github.com/franciscoturdera00/resume-kit.git <project>/.claude/skills/resume-kit
+```
+
+Already have the directory (from a `.skill` file or a downloaded zip)? Copy it in instead:
+
+```bash
+cp -r resume-kit ~/.claude/skills/resume-kit
 ```
 
 Then start a session and say *"set up my resume"* or *"tailor my resume for this job:
@@ -61,6 +67,14 @@ Point it elsewhere with `python3 scripts/kit.py set-home <dir>` (or `$RESUME_KIT
 - *"Tailor my resume for this posting: <url>"* is the main loop.
 - *"Add this to my resume: I shipped X"* does an additive update, with a backup first.
 - *"Is my resume kit working?"* runs `python3 scripts/kit.py doctor`.
+- *"Where's my master?"* runs `python3 scripts/kit.py locate`, which finds an existing one
+  anywhere on the machine and tells you how to adopt it.
+
+Wherever your master ends up living, the skill drops a `CLAUDE.md` in that folder
+(`kit.py note`) explaining how to load it and that an empty home is not a first run. That
+note is what makes a fresh session pick up where the last one left off instead of asking
+who you are. It updates its own section and leaves the rest of an existing `CLAUDE.md`
+untouched.
 
 ## How the page gets to one page
 
@@ -96,8 +110,16 @@ your Claude account's files) before onboarding:
 python3 scripts/kit.py set-home <persisted-folder>
 ```
 
-Run `python3 scripts/kit.py paths` at the start of a later session; if `master_exists` is
-false when you know you built one, the home is pointing at ephemeral storage.
+If the session can only reach your folders through a file-transfer bridge rather than a
+real path, `set-home` won't help. The skill keeps the home local and writes your master
+back to your folder whenever it changes, then leaves a note there so the next session
+finds it.
+
+Either way, a later session that starts with an empty sandbox will not re-interview you.
+`master_exists: false` sends the skill to `kit.py locate`, which searches your documents,
+sync folders, and the paths agent sandboxes stage connected folders into, and adopts what
+it finds. Onboarding only runs after that search comes back empty *and* you confirm you
+have never built one.
 
 ## Layout
 
@@ -112,7 +134,7 @@ scripts/
   render.py                       tailored JSON -> one-page .docx + PDF (+ PNG, metrics)
   docx_out.py                     the editable copy, from the same solved geometry
   prose.py                        house-style lint: no em dashes, no filler
-  kit.py                          paths, validate, backup, doctor (stdlib only)
+  kit.py                          paths, locate, adopt, note, validate, backup, doctor (stdlib only)
   setup.sh                        dependency install without uv
 assets/
   master_resume.example.json      complete valid master (fictional person)

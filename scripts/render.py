@@ -397,11 +397,31 @@ def solve(data: dict):
 # Drawing
 # ---------------------------------------------------------------------------
 
-def draw(lay: Layout, out_pdf: Path, title: str = "Resume"):
+def draw(lay: Layout, out_pdf: Path, title: str = "Resume") -> int:
+    """Draw the layout, spilling onto further pages if it overflows.
+
+    Overflow is a failure the caller must act on, but it must not be a *silent*
+    one: content past the fold continues on page 2 rather than being drawn off
+    the canvas and lost. Returns the page count actually written.
+    """
     c = rl_canvas.Canvas(str(out_pdf), pagesize=letter)
     c.setTitle(title)
+    page_count = max(1, int((lay.y - 1e-6) // USABLE_H) + 1)
+    for page in range(page_count):
+        _draw_page(c, lay.ops, page)
+        c.showPage()
+    c.save()
+    return page_count
+
+
+def _draw_page(c, ops, page: int):
     top = PAGE_H - MARGIN_TOP
-    for op in lay.ops:
+    lo, hi = page * USABLE_H, (page + 1) * USABLE_H
+    for op in ops:
+        y_abs = op[2]  # both op kinds carry y in slot 2
+        if not (lo <= y_abs < hi):
+            continue
+        op = (op[0], op[1], y_abs - lo) + tuple(op[3:])
         if op[0] == "text":
             _, x, y, text, font, size, color, charspace = op
             text = text.rstrip()
@@ -420,8 +440,6 @@ def draw(lay: Layout, out_pdf: Path, title: str = "Resume"):
             c.setStrokeColor(HexColor(color))
             c.setLineWidth(th)
             c.line(MARGIN_X + x0, top - y, MARGIN_X + x0 + w, top - y)
-    c.showPage()
-    c.save()
 
 
 def rasterize(pdf_path: Path, png_path: Path, dpi: int = 110) -> bool:
@@ -455,14 +473,19 @@ def main():
     lay, ctx, trimmed = solve(data)
     pdf_path = out_dir / f"{args.basename}.pdf"
     name = data.get("meta", {}).get("name", "Resume")
-    draw(lay, pdf_path, title=f"{name} — Resume")
+    pages = draw(lay, pdf_path, title=f"{name} — Resume")
+
+    # solve() trims in place; keep the JSON that ships next to the PDF equal to
+    # the JSON that produced it.
+    if trimmed:
+        Path(args.tailored).write_text(json.dumps(data, indent=2))
 
     fill = lay.y / USABLE_H
     warnings = []
-    if lay.y > USABLE_H:
+    if pages > 1:
         warnings.append(
-            "OVERFLOW: content still exceeds one page at the tightest scale after "
-            f"{len(trimmed)} trims. Cut content and re-render."
+            f"OVERFLOW: content runs to {pages} pages at the tightest scale after "
+            f"{len(trimmed)} trims. NOT DELIVERABLE — cut content and re-render."
         )
     if fill < 0.85:
         warnings.append(
@@ -471,8 +494,9 @@ def main():
         )
     if trimmed:
         warnings.append(
-            f"TRIMMED {len(trimmed)} item(s) to fit. Prefer writing shorter content "
-            "over letting the renderer choose what to drop."
+            f"TRIMMED {len(trimmed)} item(s) to fit (and rewrote {args.tailored} to "
+            "match). Prefer writing shorter content over letting the renderer choose "
+            "what to drop."
         )
 
     png_path = out_dir / f"{args.basename}.page1.png"
@@ -486,7 +510,8 @@ def main():
     metrics = {
         "pdf": str(pdf_path),
         "png": str(png_path) if png_ok else None,
-        "pages": 1 if lay.y <= USABLE_H else 2,
+        "deliverable": pages == 1,
+        "pages": pages,
         "fill": round(fill, 3),
         "scale": ctx["scale"],
         "content_height_pt": round(lay.y, 1),
@@ -497,6 +522,10 @@ def main():
     }
     (out_dir / "fit.json").write_text(json.dumps(metrics, indent=2))
     print(json.dumps(metrics, indent=2))
+    # Non-zero rc so a caller that only checks the exit status can never treat a
+    # multi-page render as a finished resume.
+    if pages > 1:
+        raise SystemExit(3)
 
 
 if __name__ == "__main__":

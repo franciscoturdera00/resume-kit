@@ -16,10 +16,14 @@ You are the writer and the reviewer. `scripts/render.py` owns the page: it lays 
 ## Every invocation starts here
 
 ```bash
-python3 <skill-dir>/scripts/kit.py paths
+for d in ~/.claude/skills/resume-kit ./.claude/skills/resume-kit .claude/skills/resume-kit; do
+  [ -f "$d/scripts/kit.py" ] && python3 "$d/scripts/kit.py" paths && break
+done
 ```
 
-Stdlib only, always runs. It prints `master`, `master_exists`, `output_dir`, and `kit_root` (= `<skill-dir>`, use it for the paths below). Surface any `warnings` it returns.
+(If you already know this skill's directory, just run `python3 <that-dir>/scripts/kit.py paths`.)
+
+Stdlib only, always runs. It prints `master`, `master_exists`, `output_dir`, and `kit_root`. **`kit_root` is this skill's absolute directory — substitute it for `<skill-dir>` everywhere below.** Surface any `warnings` it returns.
 
 - `master_exists: false` → **first run**. Read `references/onboarding.md` and build the master before anything else. Do not tailor against a resume that doesn't exist yet, and do not invent one.
 - `master_exists: true` → route by what was asked:
@@ -44,6 +48,8 @@ uv run <skill-dir>/scripts/render.py \
 ```
 
 `uv` installs the two dependencies on first use. No uv? See **Dependencies** below. The command prints metrics and writes `resume.pdf`, `resume.page1.png`, and `fit.json`.
+
+**A non-zero exit code means the PDF is not deliverable** (it ran to two pages). Check `deliverable` in the metrics; never hand over a resume when it is `false`.
 
 **5. Review before showing anything.** Read the PNG (actually look at it) and work through `references/review.md` in writing. Skipping this step is how a resume that reads as generic reaches the user.
 

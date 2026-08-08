@@ -1,0 +1,86 @@
+# First run — building the master resume
+
+Goal: a validated `master_resume.json` in the state directory. Everything else in this
+skill depends on it, so this step is worth doing slowly and asking real questions.
+
+Two paths. Ask which one applies:
+
+- **Import** — they have a resume already (PDF, or text they can paste). Fastest, and
+  usually better, because the facts are already settled.
+- **Interview** — no resume, or the one they have is badly out of date.
+
+Either way, run `python3 <skill-dir>/scripts/kit.py init` first to create the directories.
+
+## Path A — import an existing resume
+
+1. Ask for the file path or the pasted text. **PDF is the format to ask for** — you can
+   read PDFs directly. You cannot read `.docx`; if that's all they have, ask them to
+   export a PDF (Word/Pages/Google Docs all do this in one step) or paste the text.
+2. Read the file. Extract every fact: contact details, each role with exact company,
+   title, location, and dates, every bullet, projects, education, certifications.
+3. Convert to the schema in `master-resume.md`. This is a transcription job — do not
+   improve, embellish, or invent numbers while converting. If a bullet is weak, keep it
+   weak for now and flag it in step 5.
+4. Fill the parts a one-page resume doesn't contain (see **What the file needs beyond a
+   resume** below). This is where the interview questions come back.
+5. Show the user anything you had to guess or drop, and ask about weak bullets: "your
+   resume says 'helped with deployments' — what actually happened, and did it change a
+   number?" Their answer is the bullet worth keeping.
+
+## Path B — interview
+
+Work through these in order. Keep it conversational, one topic at a time, and stop when
+you have enough — a thin honest master beats a padded one.
+
+1. **Contact** — name, email, phone, location, LinkedIn/GitHub/portfolio (whichever they
+   actually use).
+2. **Each role, most recent first** — company, title, location, start and end (month +
+   year), then: what did you own, what did you build, what broke and how did you fix it,
+   what got faster/cheaper/bigger and by how much? Push once for numbers, accept "I don't
+   know" the second time.
+3. **Projects** — anything they'd point at in an interview: side projects, open source,
+   big internal systems. Tech used and what it does.
+4. **Education** — degree, institution, location, years, honors.
+5. **Skills** — group by category (languages, infrastructure, data, practices — whatever
+   fits them). Only things they'd defend in an interview.
+6. **Certifications** — optional, skip if none.
+
+Ask about numbers as a matter of course ("how many users?", "how long did it take
+before?"), but never fabricate one to fill the gap. A qualitative bullet
+("multi-tenant", "production", "end-to-end") is honest; an invented metric is a lie the
+user has to defend in an interview.
+
+## What the file needs beyond a resume
+
+The master isn't a resume — it's the pool a resume gets selected from. Three things a
+normal resume doesn't have, and all three are load-bearing:
+
+**Title and summary variants (2-3 of each).** Different roles need different framing.
+Someone applying to both platform and AI roles needs a headline for each. One variant
+means every tailored resume opens the same way and positions them for nothing in
+particular. Derive them from the directions the user actually wants to apply in — ask.
+
+**Tags, on everything.** Bullets, projects, titles, and summaries all get `tags`.
+Selection runs on tags; an untagged bullet is invisible to tailoring, no matter how good
+it is. Use lowercase-hyphenated tags, reuse a tag the file already has rather than
+coining a synonym (`ci-cd` and `cicd` split one concept into two dead ones), and give
+each bullet 3-6 tags: technologies, domain, and the kind of work.
+
+**Priorities.** `priority: 1` is career-defining, `2` is solid, `3` is filler for a thin
+page. Used to break ties when several entries match equally.
+
+## Finishing
+
+```bash
+python3 <skill-dir>/scripts/kit.py validate
+```
+
+Fix every error; read the warnings and fix the ones that are real (a flagged tag typo is
+always real — it quietly removes that content from every future tailoring pass).
+
+Then show the user a short summary of what's in the file: how many roles, bullets,
+projects, and which title variants exist. Offer to generate a resume for a specific job
+if they have one in mind.
+
+`assets/master_resume.example.json` is a complete, valid file to check shape against.
+Never copy its content into a real master — that person doesn't exist.

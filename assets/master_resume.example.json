@@ -1,0 +1,212 @@
+{
+  "_comment": "Fictional example showing every field resume-kit uses. Delete this file's person and replace with your own during onboarding — do NOT edit this copy; it is the shipped reference.",
+
+  "meta": {
+    "name": "Jordan Rivera",
+    "title": "Backend Engineer | Distributed Systems and Developer Tooling",
+    "email": "jordan.rivera@example.com",
+    "phone": "+1 (555) 010-2288",
+    "location": "Austin, TX",
+    "linkedin": "linkedin.com/in/example-jordan-rivera",
+    "github": "github.com/example-jrivera"
+  },
+
+  "titles": [
+    {
+      "id": "backend",
+      "text": "Backend Engineer | Distributed Systems and Developer Tooling",
+      "tags": ["backend", "distributed-systems", "go", "python", "platform"]
+    },
+    {
+      "id": "data_platform",
+      "text": "Data Platform Engineer | Streaming Pipelines at Scale",
+      "tags": ["data", "streaming", "kafka", "etl", "platform"]
+    },
+    {
+      "id": "ai_apps",
+      "text": "Software Engineer | LLM Applications and Agentic Systems",
+      "tags": ["ai", "llm", "agent", "python", "api"]
+    }
+  ],
+
+  "summaries": [
+    {
+      "id": "backend",
+      "text": "Backend engineer with six years building services that stay up: cut p99 latency 60% on a 4B-request/month API, and led the migration off a monolith without a customer-visible incident. Comfortable owning a system end to end, from schema design to on-call.",
+      "tags": ["backend", "distributed-systems", "go", "reliability", "platform"],
+      "priority": 1
+    },
+    {
+      "id": "data_platform",
+      "text": "Data platform engineer who has run streaming infrastructure at production scale — 1.2M events/sec through Kafka with exactly-once delivery — and built the self-serve tooling that let 40 analysts ship pipelines without filing tickets.",
+      "tags": ["data", "streaming", "kafka", "etl", "platform"],
+      "priority": 1
+    },
+    {
+      "id": "ai_apps",
+      "text": "Engineer shipping LLM features in production, from a retrieval service answering 200k support questions a month to an internal agent framework now used by four product teams. Backend depth plus hands-on experience with evaluation, cost control, and latency budgets.",
+      "tags": ["ai", "llm", "agent", "python", "api"],
+      "priority": 2
+    }
+  ],
+
+  "skills": {
+    "languages": ["Go", "Python", "TypeScript", "SQL"],
+    "infrastructure": ["AWS (EKS, Lambda, RDS, S3)", "Kubernetes", "Terraform", "Docker"],
+    "data": ["Kafka", "PostgreSQL", "Redis", "Snowflake", "dbt"],
+    "practices": ["Distributed Tracing", "CI/CD", "Incident Response", "API Design"]
+  },
+
+  "experience": [
+    {
+      "id": "northwind_senior",
+      "company": "Northwind Logistics",
+      "title": "Senior Backend Engineer",
+      "location": "Austin, TX",
+      "start": "Mar 2022",
+      "end": "Present",
+      "priority": 1,
+      "tags": ["backend", "go", "distributed-systems", "reliability", "platform"],
+      "bullets": [
+        {
+          "id": "northwind_1",
+          "text": "Cut p99 latency 60% on a 4B-request/month routing API by replacing synchronous fan-out with a cached materialized view.",
+          "tags": ["backend", "performance", "go", "api"],
+          "priority": 1
+        },
+        {
+          "id": "northwind_2",
+          "text": "Led the decomposition of a 400k-line monolith into eight services, shipping incrementally with zero customer-visible downtime.",
+          "tags": ["backend", "distributed-systems", "migration", "architecture"],
+          "priority": 1
+        },
+        {
+          "id": "northwind_3",
+          "text": "Built the on-call runbook and tracing standards now used by every backend team, cutting mean time to resolution from 90 to 22 minutes.",
+          "tags": ["reliability", "observability", "incident-response"],
+          "priority": 2
+        },
+        {
+          "id": "northwind_4",
+          "text": "Shipped an internal agent framework on top of the Claude API that four product teams now use for support triage and document extraction.",
+          "tags": ["ai", "llm", "agent", "python"],
+          "priority": 2
+        }
+      ]
+    },
+    {
+      "id": "helios_data",
+      "company": "Helios Analytics",
+      "title": "Data Platform Engineer",
+      "location": "Remote",
+      "start": "Jun 2019",
+      "end": "Feb 2022",
+      "priority": 1,
+      "tags": ["data", "streaming", "kafka", "etl", "platform"],
+      "bullets": [
+        {
+          "id": "helios_1",
+          "text": "Scaled a Kafka pipeline from 80k to 1.2M events/sec with exactly-once delivery, absorbing a 15x traffic increase without adding headcount.",
+          "tags": ["streaming", "kafka", "data", "scale"],
+          "priority": 1
+        },
+        {
+          "id": "helios_2",
+          "text": "Built a self-serve pipeline framework in Python that let 40 analysts ship transformations without engineering review, eliminating a two-week queue.",
+          "tags": ["data", "python", "etl", "developer-experience"],
+          "priority": 1
+        },
+        {
+          "id": "helios_3",
+          "text": "Reduced Snowflake spend 38% by rewriting the ten costliest models in dbt with incremental materialization.",
+          "tags": ["data", "cost-optimization", "dbt", "sql"],
+          "priority": 2
+        }
+      ]
+    },
+    {
+      "id": "quill_junior",
+      "company": "Quill Software",
+      "title": "Software Engineer",
+      "location": "Chicago, IL",
+      "start": "Jul 2017",
+      "end": "May 2019",
+      "priority": 3,
+      "tags": ["backend", "python", "api", "full-stack"],
+      "bullets": [
+        {
+          "id": "quill_1",
+          "text": "Built the public REST API and its client SDKs, onboarding the first 120 integration partners.",
+          "tags": ["api", "backend", "python", "developer-experience"],
+          "priority": 2
+        },
+        {
+          "id": "quill_2",
+          "text": "Automated the release pipeline, taking deploys from weekly and manual to twelve a day.",
+          "tags": ["cicd", "automation", "devops"],
+          "priority": 3
+        }
+      ]
+    }
+  ],
+
+  "projects": [
+    {
+      "id": "tracewell",
+      "name": "Tracewell",
+      "tech": ["Go", "OpenTelemetry", "ClickHouse", "React"],
+      "description": "Open-source trace explorer that ingests OpenTelemetry spans and answers latency questions in plain language; 1.4k GitHub stars and used by three companies in production.",
+      "tags": ["observability", "go", "distributed-systems", "open-source"],
+      "priority": 1,
+      "versions": [
+        {
+          "label": "v1 — CLI",
+          "name": "Tracewell CLI",
+          "description": "Built a single-binary CLI that replayed OpenTelemetry traces locally so developers could debug latency without a staging deploy.",
+          "tech": ["Go", "OpenTelemetry"],
+          "tags": ["observability", "go", "cli"]
+        },
+        {
+          "label": "v2 — hosted service",
+          "name": "Tracewell Cloud",
+          "description": "Rebuilt Tracewell as a hosted service on ClickHouse with a React UI, scaling ingestion to 30k spans/sec on a three-node cluster.",
+          "tech": ["Go", "ClickHouse", "React", "Kubernetes"],
+          "tags": ["observability", "distributed-systems", "scale", "frontend"]
+        }
+      ]
+    },
+    {
+      "id": "askdocs",
+      "name": "AskDocs",
+      "tech": ["Python", "FastAPI", "Claude API", "pgvector"],
+      "description": "Retrieval service that answers 200k support questions a month against a 90k-document corpus, with an offline eval harness that gates every prompt change.",
+      "tags": ["ai", "llm", "python", "retrieval", "api"],
+      "priority": 1
+    },
+    {
+      "id": "gridpost",
+      "name": "Gridpost",
+      "tech": ["TypeScript", "Next.js", "Postgres"],
+      "description": "Side project that turns city permit filings into a searchable map; 6k monthly users in Austin.",
+      "tags": ["full-stack", "typescript", "frontend", "side-project"],
+      "priority": 3
+    }
+  ],
+
+  "education": [
+    {
+      "id": "uiuc",
+      "institution": "University of Illinois Urbana-Champaign",
+      "degree": "B.S. in Computer Science",
+      "honors": "Cum Laude",
+      "location": "Urbana, IL",
+      "start": "2013",
+      "end": "2017",
+      "priority": 1
+    }
+  ],
+
+  "certifications": [
+    { "name": "Certified Kubernetes Administrator", "issuer": "CNCF", "year": "2023" }
+  ]
+}

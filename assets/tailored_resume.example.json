@@ -1,0 +1,90 @@
+{
+  "_comment": "The exact shape the renderer consumes. Produced by tailoring assets/master_resume.example.json against a fictional backend-platform posting. Used by `kit.py doctor` as an end-to-end render check.",
+
+  "company": "Example Corp",
+  "job_title": "Senior Backend Engineer, Platform",
+
+  "meta": {
+    "name": "Jordan Rivera",
+    "title": "Senior Backend Engineer | Distributed Systems, Go, and Platform Reliability",
+    "email": "jordan.rivera@example.com",
+    "phone": "+1 (555) 010-2288",
+    "location": "Austin, TX",
+    "linkedin": "linkedin.com/in/example-jordan-rivera",
+    "github": "github.com/example-jrivera"
+  },
+
+  "summary": "Backend engineer with six years building services that stay up: cut p99 latency 60% on a 4B-request/month API, and led the migration off a 400k-line monolith without a customer-visible incident. Owns systems end to end — schema design, rollout, tracing, and on-call — and has built the platform tooling other teams depend on.",
+
+  "experience": [
+    {
+      "company": "Northwind Logistics",
+      "title": "Senior Backend Engineer",
+      "location": "Austin, TX",
+      "start": "Mar 2022",
+      "end": "Present",
+      "bullets": [
+        "Cut p99 latency 60% on a 4B-request/month routing API by replacing synchronous fan-out with a cached materialized view.",
+        "Led the decomposition of a 400k-line monolith into eight Go services, shipping incrementally with zero customer-visible downtime.",
+        "Built the on-call runbook and distributed-tracing standards now used by every backend team, cutting mean time to resolution from 90 to 22 minutes."
+      ]
+    },
+    {
+      "company": "Helios Analytics",
+      "title": "Data Platform Engineer",
+      "location": "Remote",
+      "start": "Jun 2019",
+      "end": "Feb 2022",
+      "bullets": [
+        "Scaled a Kafka pipeline from 80k to 1.2M events/sec with exactly-once delivery, absorbing a 15x traffic increase without adding headcount.",
+        "Built a self-serve pipeline framework in Python that let 40 analysts ship transformations without engineering review, eliminating a two-week queue.",
+        "Reduced Snowflake spend 38% by rewriting the ten costliest models in dbt with incremental materialization."
+      ]
+    },
+    {
+      "company": "Quill Software",
+      "title": "Software Engineer",
+      "location": "Chicago, IL",
+      "start": "Jul 2017",
+      "end": "May 2019",
+      "bullets": [
+        "Built the public REST API and its client SDKs, onboarding the first 120 integration partners.",
+        "Automated the release pipeline, taking deploys from weekly and manual to twelve a day."
+      ]
+    }
+  ],
+
+  "skills": {
+    "technical": ["Go", "Python", "TypeScript", "SQL", "Kubernetes", "Terraform", "Kafka", "PostgreSQL"],
+    "tools": ["AWS (EKS, Lambda, RDS, S3)", "Docker", "OpenTelemetry", "dbt", "Snowflake", "Redis"],
+    "other": ["Distributed Tracing", "API Design", "CI/CD", "Incident Response"]
+  },
+
+  "projects": [
+    {
+      "name": "Tracewell (v2 — hosted service)",
+      "tech": ["Go", "ClickHouse", "React", "Kubernetes"],
+      "description": "Rebuilt an open-source trace explorer as a hosted service on ClickHouse, scaling ingestion to 30k spans/sec on a three-node cluster; 1.4k GitHub stars and three production users."
+    },
+    {
+      "name": "AskDocs",
+      "tech": ["Python", "FastAPI", "Claude API", "pgvector"],
+      "description": "Retrieval service answering 200k support questions a month against a 90k-document corpus, with an offline eval harness that gates every prompt change."
+    }
+  ],
+
+  "education": [
+    {
+      "institution": "University of Illinois Urbana-Champaign",
+      "degree": "B.S. in Computer Science",
+      "honors": "Cum Laude",
+      "location": "Urbana, IL",
+      "start": "2013",
+      "end": "2017"
+    }
+  ],
+
+  "certifications": [
+    { "name": "Certified Kubernetes Administrator", "issuer": "CNCF", "year": "2023" }
+  ]
+}

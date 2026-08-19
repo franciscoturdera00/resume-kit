@@ -1,5 +1,7 @@
 # resume-kit
 
+> **Download:** grab `resume-kit.skill` from the [latest release](https://github.com/franciscoturdera00/resume-kit/releases/latest), or clone as shown below.
+
 A Claude skill that keeps a **master resume** for you and generates **tailored one-page
 resumes** for specific job postings, as an editable `.docx` with a matching PDF.
 

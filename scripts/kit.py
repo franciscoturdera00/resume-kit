@@ -15,7 +15,7 @@ Commands:
 The home directory holds everything stateful:
     <home>/master_resume.json      the single source of truth
     <home>/backups/                every pre-edit snapshot
-    <home>/output/<company>/<role> generated resumes
+    <home>/deliverables/<company>/<role> generated resumes
 """
 
 import argparse
@@ -314,7 +314,7 @@ def cmd_paths(args):
         "home": str(home),
         "master": str(mp),
         "master_exists": mp.exists(),
-        "output_dir": str(home / "output"),
+        "output_dir": str(home / "deliverables"),
         "backups_dir": str(home / "backups"),
         "kit_root": str(KIT_ROOT),
         "source": ("env:RESUME_KIT_HOME" if os.environ.get("RESUME_KIT_HOME")
@@ -493,7 +493,7 @@ def cmd_adopt(args):
         shutil.copy2(dest, replaced)
 
     dest.parent.mkdir(parents=True, exist_ok=True)
-    (home / "output").mkdir(parents=True, exist_ok=True)
+    (home / "deliverables").mkdir(parents=True, exist_ok=True)
     (home / "backups").mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dest)
     print(json.dumps({
@@ -523,7 +523,7 @@ def cmd_set_home(args):
 
 def cmd_init(args):
     home, _ = resolve_home()
-    (home / "output").mkdir(parents=True, exist_ok=True)
+    (home / "deliverables").mkdir(parents=True, exist_ok=True)
     (home / "backups").mkdir(parents=True, exist_ok=True)
     print(json.dumps({"home": str(home), "master_exists": master_path(home).exists()}, indent=2))
     return 0

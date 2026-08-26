@@ -56,7 +56,7 @@ touches your data:
 ~/.resume-kit/
   master_resume.json                     # the source of truth
   backups/                               # a snapshot before every edit
-  output/<company>/<role>/
+  deliverables/<company>/<role>/
     resume.docx                          # the deliverable, edit it however you like
     resume.pdf                           # same document, and what most applications want
     resume.page1.png, fit.json, tailored_resume.json, job_description.txt

@@ -4,6 +4,8 @@
   "company": "Example Corp",
   "job_title": "Senior Backend Engineer, Platform",
 
+  "bold_keywords": ["Go", "Kafka", "p99 latency", "ClickHouse"],
+
   "meta": {
     "name": "Jordan Rivera",
     "title": "Senior Backend Engineer | Distributed Systems, Go, and Platform Reliability",

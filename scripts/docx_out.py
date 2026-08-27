@@ -12,6 +12,7 @@ Word still owns its own renderer, so treat the PDF as the proof of fit and the
 DOCX as the editable copy of the same document.
 """
 
+from emphasis import compile_keywords, split_runs
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
@@ -105,9 +106,16 @@ def _setup_bullets(doc) -> str:
     return "1"
 
 
-def _bullet(doc, text, ctx, num_id):
+def _prose_runs(p, text, ctx, kw, color=DARK):
+    """Add `text` to paragraph `p` as regular/bold runs, split exactly the way
+    the PDF splits it, so both deliverables emphasize the same characters."""
+    for chunk, hit in split_runs(text, kw):
+        _set_font(p.add_run(chunk), ctx["body"], bold=hit, color=color)
+
+
+def _bullet(doc, text, ctx, num_id, kw=None):
     p = doc.add_paragraph()
-    _set_font(p.add_run(text), ctx["body"], color=DARK)
+    _prose_runs(p, text, ctx, kw)
     pPr = p._p.get_or_add_pPr()
     numPr = OxmlElement("w:numPr")
     for tag, val in (("w:ilvl", "0"), ("w:numId", num_id)):
@@ -159,6 +167,7 @@ def _daterange(entry) -> str:
 
 
 def render_docx(data: dict, ctx: dict, out_path):
+    kw = compile_keywords(data.get("bold_keywords"))
     doc = Document()
     _setup_page(doc)
     doc.add_paragraph("", style="List Bullet")
@@ -190,7 +199,7 @@ def render_docx(data: dict, ctx: dict, out_path):
 
     if data.get("summary"):
         p = doc.add_paragraph()
-        _set_font(p.add_run(data["summary"]), ctx["body"], color=DARK)
+        _prose_runs(p, data["summary"], ctx, kw)
         _spacing(p, after=ctx["sp_after_summary"], line_pt=ctx["body"] * ctx["lead"])
 
     if data.get("experience"):
@@ -199,7 +208,7 @@ def render_docx(data: dict, ctx: dict, out_path):
             _entry_head(doc, job.get("title", ""), job.get("company"), ctx)
             _meta_line(doc, [job.get("location"), _daterange(job)], ctx)
             for b in job.get("bullets", []):
-                _bullet(doc, b, ctx, num_id)
+                _bullet(doc, b, ctx, num_id, kw)
 
     if data.get("skills"):
         _section(doc, "Skills", ctx)
@@ -223,7 +232,7 @@ def render_docx(data: dict, ctx: dict, out_path):
                      after=ctx["sp_after_entry_meta"],
                      line_pt=(ctx["body"] + 0.5 * ctx["scale"]) * ctx["lead"])
             if proj.get("description"):
-                _bullet(doc, proj["description"], ctx, num_id)
+                _bullet(doc, proj["description"], ctx, num_id, kw)
 
     if data.get("education"):
         _section(doc, "Education", ctx)

@@ -80,7 +80,10 @@ It writes a `CLAUDE.md` explaining where the master is, that an empty home is no
 
 **2. Read the whole master resume.** Not a grep. Selection quality depends on seeing every bullet, tag, and project version.
 
-**3. Write the tailored JSON.** Rules, voice, and output schema: `references/tailoring.md`. Save to
+**3. Write the tailored JSON.** Rules, voice, and output schema: `references/tailoring.md`.
+Ask the user once whether they want the posting's keywords bolded on the page; if yes,
+include the optional top-level `bold_keywords` list (4-8 exact terms that appear in your
+prose), and if not, leave the field out. Save to
 `<output_dir>/<company-slug>/<role-slug>/tailored_resume.json`, and the cleaned posting next to it as `job_description.txt`.
 
 **4. Render.**
@@ -111,6 +114,7 @@ Pass `--verify-docx` on the final render: where LibreOffice is installed it lays
 | `prose[]` non-empty | Em dash or filler words in the text | Rewrite those fields, they are house-style violations |
 | `UNDERFILLED` | Thin content, empty space at the bottom | Add a bullet or project; `room_at_min_body` says how much fits |
 | `TRIMMED` | The renderer dropped content to fit | Rewrite shorter yourself, you choose better than it does |
+| `BOLD` | A bold keyword never matches, or the list is too long | Drop the keyword or rewrite the text; keep 4-8 terms |
 | `OVERFLOW` | Doesn't fit even trimmed | Cut a whole entry, re-render |
 | `docx_pages` > 1 | Word lays it out longer than the PDF does | Cut content; do not hand over the .docx |
 | `ROOM` still set after adding everything relevant | Master is thin | Say so, and offer to enrich the master |

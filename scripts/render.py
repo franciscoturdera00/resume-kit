@@ -27,6 +27,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from emphasis import compile_keywords, split_runs, unmatched_keywords  # noqa: E402
 from prose import lint as prose_lint  # noqa: E402  (local, stdlib-only)
 
 try:
@@ -188,8 +189,9 @@ def line_height(line, lead: float) -> float:
 # ---------------------------------------------------------------------------
 
 class Layout:
-    def __init__(self, ctx):
+    def __init__(self, ctx, kw=None):
         self.ctx = ctx
+        self.kw = kw  # compiled bold_keywords matcher, or None
         self.ops = []
         self.y = 0.0
 
@@ -247,10 +249,17 @@ class Layout:
             self.runs([("  ·  ".join(parts), REG, c["contact"], GRAY)], align="center")
         self.space(c["sp_after_contact"])
 
+    def prose_runs(self, text, size, color):
+        """Prose split into regular/bold runs by the bold_keywords matcher.
+        Bold glyphs are wider, so emphasis flows through the same measurement
+        the fit solver uses; a bolded page can legitimately wrap differently."""
+        return [(chunk, BOLD if hit else REG, size, color)
+                for chunk, hit in split_runs(text, self.kw)]
+
     def summary(self, text):
         if not text:
             return
-        self.runs([(text, REG, self.ctx["body"], DARK)])
+        self.runs(self.prose_runs(text, self.ctx["body"], DARK))
         self.space(self.ctx["sp_after_summary"])
 
     def section(self, title):
@@ -264,7 +273,7 @@ class Layout:
         c = self.ctx
         indent = c["bullet_indent"]
         self.runs(
-            [("•   ", REG, c["body"], ACCENT), (text, REG, c["body"], DARK)],
+            [("•   ", REG, c["body"], ACCENT)] + self.prose_runs(text, c["body"], DARK),
             indent=indent,
         )
         self.space(c["sp_after_bullet"])
@@ -348,7 +357,7 @@ def _daterange(entry) -> str:
 
 
 def build(data: dict, ctx: dict) -> Layout:
-    lay = Layout(ctx)
+    lay = Layout(ctx, kw=compile_keywords(data.get("bold_keywords")))
     lay.header(data.get("meta", {}))
     lay.summary(data.get("summary"))
 
@@ -521,6 +530,8 @@ def main():
     ap.add_argument("--verify-docx", action="store_true",
                     help="Confirm the .docx is one page by laying it out in LibreOffice "
                          "(slow, and only possible where soffice is installed)")
+    ap.add_argument("--no-bold", action="store_true",
+                    help="Ignore bold_keywords in the JSON and render without emphasis")
     ap.add_argument("--min-body-pt", type=float, default=MIN_BODY_PT,
                     help=f"Floor on body text size in points (default {MIN_BODY_PT}). "
                          "Below this the renderer trims content instead of shrinking type.")
@@ -530,6 +541,8 @@ def main():
     SCALES = scales_for(args.min_body_pt)
 
     data = json.loads(Path(args.tailored).read_text())
+    if args.no_bold:
+        data.pop("bold_keywords", None)
     out_dir = Path(args.out_dir).expanduser()
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -597,6 +610,27 @@ def main():
             "what to drop."
         )
 
+    bold_kws = [k for k in (data.get("bold_keywords") or [])
+                if isinstance(k, str) and k.strip()]
+    if bold_kws:
+        prose_fields = [data.get("summary", "")]
+        for job in data.get("experience") or []:
+            prose_fields += job.get("bullets") or []
+        prose_fields += [p.get("description", "") for p in data.get("projects") or []]
+        misses = unmatched_keywords(bold_kws, prose_fields)
+        if misses:
+            warnings.append(
+                "BOLD: keyword(s) never matched the summary, a bullet, or a project "
+                f"description: {', '.join(misses)}. Drop them, or rewrite the text to "
+                "use the posting's term."
+            )
+        if len(bold_kws) > 8:
+            warnings.append(
+                f"BOLD: {len(bold_kws)} keywords is too many; a page where everything "
+                "is emphasized emphasizes nothing. Keep the 4-8 terms the posting "
+                "cares most about."
+            )
+
     prose = prose_lint(data, "tailored")
     if prose:
         warnings.append(
@@ -646,6 +680,7 @@ def main():
         "room_at_min_body": room_at_min,
         "page_is_full": room_at_min < ROOM_SLACK_LINES,
         "docx_pages": docx_pages,
+        "bold_keywords": bold_kws if bold_kws else [],
         "trimmed": trimmed,
         "prose": prose,
         "warnings": warnings,

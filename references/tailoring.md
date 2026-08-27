@@ -37,6 +37,15 @@ with the posting's own stack first. Drop what the posting has no use for.
 
 **Education** carries over as-is. **Certifications** only if relevant.
 
+**Offer keyword bolding.** Ask the user once per tailoring run whether they want the
+posting's keywords bolded on the page. If yes, add a top-level `bold_keywords` list:
+4-8 exact terms lifted from the posting that literally appear in your summary, bullets,
+or project descriptions (multi-word phrases allowed). The renderer bolds every
+case-insensitive whole-word occurrence in those three places only; skills lists,
+headings, and titles are untouched. Bolding is emphasis, so it obeys the same rule as
+everything else: each term must be something the posting asks for, not something that
+merely sounds impressive. If the user says no, omit the field entirely.
+
 ## Fidelity, the hard line
 
 Every fact traces to the master: titles, companies, dates, locations, metrics,
@@ -104,6 +113,7 @@ commentary in the file.
     "linkedin": "...", "github": "..."
   },
   "summary": "one paragraph",
+  "bold_keywords": ["Kubernetes", "distributed systems"],
   "experience": [
     { "company": "...", "title": "...", "location": "...",
       "start": "Mar 2022", "end": "Present",
@@ -124,4 +134,6 @@ commentary in the file.
 ```
 
 Optional sections (`projects`, `certifications`) may be omitted or empty; the renderer
-drops their headers. `assets/tailored_resume.example.json` is a complete instance.
+drops their headers. `bold_keywords` is optional too: omit it unless the user asked for
+bolding, and expect a `BOLD` warning from `render.py` for any keyword that never
+matches the text (drop it or rewrite the sentence to use the posting's term). `assets/tailored_resume.example.json` is a complete instance.

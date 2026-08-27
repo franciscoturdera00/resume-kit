@@ -7,8 +7,10 @@ resumes** for specific job postings, as an editable `.docx` with a matching PDF.
 
 You give it a job posting (URL or pasted text). It selects from everything it knows
 about your career, rewrites it in that posting's vocabulary, renders the document, looks
-at the rendered page, and revises. The master resume persists between sessions and grows
-as you ship things, so the fifth resume is better than the first.
+at the rendered page, and revises. On request it also bolds the posting's keywords where
+they appear in your summary, bullets, and project descriptions (`bold_keywords` in the
+tailored JSON; identical in the PDF and the .docx). The master resume persists between
+sessions and grows as you ship things, so the fifth resume is better than the first.
 
 No API keys. No accounts. No services. Your resume never leaves your machine.
 
@@ -135,6 +137,7 @@ references/
 scripts/
   render.py                       tailored JSON -> one-page .docx + PDF (+ PNG, metrics)
   docx_out.py                     the editable copy, from the same solved geometry
+  emphasis.py                     optional bold_keywords: one splitter for both outputs
   prose.py                        house-style lint: no em dashes, no filler
   kit.py                          paths, locate, adopt, note, validate, backup, doctor (stdlib only)
   setup.sh                        dependency install without uv

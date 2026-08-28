@@ -10,3 +10,7 @@ CLAUDE.md
 *.skill
 .DS_Store
 dist/
+SESSION_SEED.md
+applications.json
+job-hunt-task-prompt.md
+job-dashboard-*.html

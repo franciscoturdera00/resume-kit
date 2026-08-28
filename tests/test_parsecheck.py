@@ -1,0 +1,135 @@
+#!/usr/bin/env python3
+"""Tests for the parse gate.
+
+Run:  python3 tests/test_parsecheck.py
+      uv run --with reportlab --with pypdfium2 --with python-docx \\
+             python tests/test_parsecheck.py     # includes the round trip
+
+A gate that silently stops firing is worse than no gate, because the clean
+`parse` block in fit.json goes on saying the page is fine. Every check here
+exists to prove one half of that: the gate fires when it should, and stays quiet
+when it should. The second half matters as much as the first, since a check that
+cries wolf gets ignored within a week.
+
+The structural tests are standard library. The round trip needs the renderer's
+dependencies and skips itself, loudly, when they are missing.
+"""
+
+import json
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+
+import parsecheck as pc  # noqa: E402
+
+FAILURES = []
+
+
+def check(name: str, condition: bool, detail: str = ""):
+    if condition:
+        print(f"  ok    {name}")
+    else:
+        print(f"  FAIL  {name}{(': ' + detail) if detail else ''}")
+        FAILURES.append(name)
+
+
+# --- structure: the umbrella-company shape ---------------------------------
+#
+# The exact shape tailoring.md used to recommend. A human reads it correctly and
+# a parser records "Earlier Co-Ops" as the employer of three real companies.
+
+MERGED = {"experience": [{
+    "company": "Earlier Co-Ops",
+    "title": "Backend Engineer (Spotify) · Data Engineer (NBCUniversal)",
+    "location": "Boston and New York", "start": "Jan 2020", "end": "Jul 2022",
+}]}
+
+ROLES = {"experience": [{
+    "group": "Earlier Co-Ops",
+    "roles": [
+        {"title": "Data Engineer Co-Op", "company": "NBCUniversal",
+         "location": "New York City, NY", "start": "Jan 2022", "end": "Jul 2022"},
+        {"title": "Backend Software Engineer Co-Op", "company": "Spotify",
+         "location": "Boston, MA", "start": "Jan 2021", "end": "Aug 2021"},
+    ],
+    "bullets": ["Raised user retention by 12% on the Java backend at Spotify."],
+}]}
+
+GOOD = {"experience": [{
+    "company": "Sectra Inc", "title": "AI Enablement Lead",
+    "location": "Shelton, CT", "start": "Feb 2026", "end": "Present",
+    "bullets": ["Taught a company-wide Claude series."],
+}]}
+
+issues = pc.structure_issues(MERGED)
+check("umbrella company is reported", any("names no employer" in i for i in issues),
+      repr(issues))
+check("multi-role title is reported", any("several roles" in i for i in issues),
+      repr(issues))
+check("the roles shape passes", pc.structure_issues(ROLES) == [],
+      repr(pc.structure_issues(ROLES)))
+check("an ordinary entry passes", pc.structure_issues(GOOD) == [],
+      repr(pc.structure_issues(GOOD)))
+
+check("a role without a company is caught",
+      any("no company" in i for i in pc.structure_issues(
+          {"experience": [{"roles": [{"title": "X", "start": "2020", "end": "2021"}]}]})))
+check("a role without dates is caught",
+      any("no dates" in i for i in pc.structure_issues(
+          {"experience": [{"roles": [{"title": "X", "company": "Y"}]}]})))
+
+# --- extraction: facts that do not come back out ---------------------------
+
+check("a fact absent from the text is reported",
+      len(pc.missing_facts(GOOD, "FRANCISCO TURDERA")) > 0)
+check("a fact present in the text is not reported",
+      pc.missing_facts(GOOD, "Sectra Inc AI Enablement Lead Shelton, CT Feb 2026 - Present "
+                             "Taught a company-wide Claude series.") == [])
+
+# The normalizer earns its keep here: an extractor that returns a different dash,
+# different case, or a lost space has not lost the fact, and reporting it as
+# missing would train the reader to skim past this check.
+check("an en dash in the extracted text still matches",
+      pc.missing_facts(GOOD, "Sectra Inc AI Enablement Lead Shelton, CT Feb 2026 – Present") == [])
+check("a lost space still matches",
+      pc.missing_facts(GOOD, "SectraInc AI Enablement Lead Shelton,CT Feb 2026 - Present") == [])
+
+# --- round trip: render, read it back, expect silence ----------------------
+
+try:
+    import reportlab  # noqa: F401
+    import pypdfium2  # noqa: F401
+    HAVE_DEPS = True
+except ImportError:
+    HAVE_DEPS = False
+
+if not HAVE_DEPS:
+    print("  SKIP  round trip (reportlab or pypdfium2 not installed). "
+          "Run under uv to include it.")
+else:
+    sys.argv = ["render.py"]
+    import render  # noqa: E402
+
+    example = json.loads((ROOT / "assets" / "tailored_resume.example.json").read_text())
+    example["experience"].append(ROLES["experience"][0])  # exercise the roles path
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "resume.pdf"
+        lay, ctx, trimmed = render.solve(example)
+        pages = render.draw(lay, out)
+        result = pc.check(example, out)
+        check("the example renders to one page", pages == 1, f"pages={pages}")
+        check("a rendered page yields its own facts back",
+              result["missing"] == [], repr(result["missing"]))
+        check("a rendered page has no structural complaints",
+              result["structure"] == [], repr(result["structure"]))
+        check("text extraction actually ran", result["extracted"] is True)
+
+print()
+if FAILURES:
+    print(f"{len(FAILURES)} failed: {', '.join(FAILURES)}")
+    raise SystemExit(1)
+print("all checks passed")

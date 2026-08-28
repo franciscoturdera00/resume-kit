@@ -6,6 +6,6 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 mkdir -p dist
 git archive --format=zip --prefix=resume-kit/ -o dist/resume-kit.skill HEAD \
-  ":!.github" ":!scripts/package.sh"
+  ":!.github" ":!scripts/package.sh" ":!tests"
 echo "Wrote dist/resume-kit.skill from commit $(git rev-parse --short HEAD):"
 unzip -l dist/resume-kit.skill | tail -3

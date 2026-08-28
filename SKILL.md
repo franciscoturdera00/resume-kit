@@ -103,7 +103,24 @@ Pass `--verify-docx` on the final render: where LibreOffice is installed it lays
 
 **6. Fill the page, then revise at most twice.** A `ROOM` warning means the page still has capacity: add the next strongest content from the master and re-render, repeating until the warning clears or the next addition causes a trim. Filling the page is not a revision, it is finishing the draft, so it does not count against the two. Then fix content, re-render, re-review, and stop, reporting honestly what you couldn't fix.
 
-**7. Report** the .docx path, the PDF beside it, company and role, page fill, and anything the review flagged. Don't paste the JSON.
+**7. Log it.**
+
+```bash
+python3 <skill-dir>/scripts/kit.py log --dir <out> --url <posting-url>
+```
+
+This records company, role, headline and keywords in `<home>/applications.json` with
+status `generated`. When the user says they actually sent it, update the status:
+`kit.py log --company X --role Y --status applied`. Statuses run `generated`, `applied`,
+`screen`, `interview`, `onsite`, `offer`, `rejected`, `ghosted`, `withdrawn`.
+
+The log is the only thing in the kit that knows what happened *after* the page was
+rendered. Read it (`kit.py applications`) before tailoring, so a job already applied to
+is not silently redone, and so the resumes that drew replies are visible when choosing
+how to frame the next one. `kit.py backfill` seeds it from resumes generated before the
+log existed.
+
+**8. Report** the .docx path, the PDF beside it, company and role, page fill, and anything the review flagged. Don't paste the JSON.
 
 ### Reading the metrics
 
@@ -118,6 +135,9 @@ Pass `--verify-docx` on the final render: where LibreOffice is installed it lays
 | `OVERFLOW` | Doesn't fit even trimmed | Cut a whole entry, re-render |
 | `docx_pages` > 1 | Word lays it out longer than the PDF does | Cut content; do not hand over the .docx |
 | `ROOM` still set after adding everything relevant | Master is thin | Say so, and offer to enrich the master |
+| `PARSE` (structure) | An entry carries facts in a field that names nothing, usually an umbrella company like "Earlier Co-Ops" | Rewrite that entry with the `roles` list; see `tailoring.md` |
+| `PARSE` (missing) | A fact in the JSON does not come back out of the PDF text | The layout welded it to a neighbour. Report it; do not hand the file over as ATS-safe |
+| `HIGHLIGHTS` | More than three highlights given | Cut it to three yourself |
 
 `scale` is the typographic size the fitter settled on, and `body_pt` is what that means in points. Body text never renders below `min_body_pt` (9.5pt by default, override with `--min-body-pt`). Once the floor is reached the renderer trims content instead of shrinking type, so `TRIMMED` at the lowest scale means the page is genuinely too full: cut content, do not reach for smaller type. Margins are 0.5in on all four sides, in both the PDF and the .docx.
 

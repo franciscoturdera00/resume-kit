@@ -9,6 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Run tests
+        run: |
+          python3 -m pip install --quiet 'reportlab>=4.0' 'pypdfium2>=4.0' 'python-docx>=1.1.0'
+          python3 tests/test_parsecheck.py
       - name: Package .skill from tracked files
         run: bash scripts/package.sh
       - name: Create release with the .skill attached

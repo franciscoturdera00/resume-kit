@@ -38,7 +38,9 @@ Open the posting and the tailored JSON side by side.
    one is a line the recruiter spends learning something irrelevant. Replace or cut it.
 3. **Fidelity.** For every number, title, date, and technology in the draft, name the
    master entry it came from. Anything you cannot trace is a fabrication. Remove it now.
-   (Merged short roles are fine; see `tailoring.md`.)
+   (Merged short roles are fine, but only through the `roles` list; an umbrella company
+   like "Earlier Co-Ops" is a fabricated employer, and `fit.json`'s `parse.structure[]`
+   will say so. See `tailoring.md`.)
 4. **Positioning.** Read only the name, headline, and summary. Do they read as a
    candidate for *this* posting, or as a generic engineer? If a competing applicant's
    page would open identically, rewrite it.

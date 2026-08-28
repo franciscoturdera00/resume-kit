@@ -28,6 +28,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from emphasis import compile_keywords, split_runs, unmatched_keywords  # noqa: E402
+from parsecheck import check as parse_check  # noqa: E402
 from prose import lint as prose_lint  # noqa: E402  (local, stdlib-only)
 
 try:
@@ -90,6 +91,10 @@ MAX_TRIMS = 12
 # Lines of unused capacity (measured at the floor) that count as a page worth
 # filling. One line is a rounding artifact; two is a bullet the page could carry.
 ROOM_SLACK_LINES = 2
+# Opt-in Highlights block. Three is the cap on purpose: a fourth turns the top of
+# the page into a second resume and pushes the experience that backs it below the
+# fold. Omit the field entirely for the normal case.
+MAX_HIGHLIGHTS = 3
 
 
 def scales_for(min_body_pt: float) -> list:
@@ -278,18 +283,43 @@ class Layout:
         )
         self.space(c["sp_after_bullet"])
 
+    def entry_head(self, job):
+        """Title, employer, place and dates for one role, on two lines."""
+        c = self.ctx
+        head = [(job.get("title", ""), BOLD, c["body"] + 0.5 * c["scale"], DARK)]
+        if job.get("company"):
+            head.append((f"  |  {job['company']}", REG, c["body"], GRAY))
+        self.runs(head)
+        meta_bits = [b for b in (job.get("location"), _daterange(job)) if b]
+        if meta_bits:
+            self.runs([("  |  ".join(meta_bits), REG, c["meta_small"], GRAY)])
+
+    def role_line(self, role):
+        """One short role on a single line, employer and dates intact.
+
+        This is what merging costs honestly. The old way of fitting three co-ops
+        into one entry, an umbrella company and every employer buried in the
+        title, saves the same line and throws the employers away; see
+        parsecheck.py. A line each keeps Spotify a company and Jan 2021 a date.
+        """
+        c = self.ctx
+        head = [(role.get("title", ""), BOLD, c["body"] + 0.5 * c["scale"], DARK)]
+        if role.get("company"):
+            head.append((f"  |  {role['company']}", REG, c["body"], GRAY))
+        tail = "  ·  ".join([b for b in (role.get("location"), _daterange(role)) if b])
+        if tail:
+            head.append((f"  ·  {tail}", REG, c["meta_small"], GRAY))
+        self.runs(head)
+
     def experience(self, entries):
         c = self.ctx
         for job in entries:
             self.space(c["sp_before_entry"])
-            head = [(job.get("title", ""), BOLD, c["body"] + 0.5 * c["scale"], DARK)]
-            if job.get("company"):
-                head.append((f"  |  {job['company']}", REG, c["body"], GRAY))
-            self.runs(head)
-            meta_bits = [b for b in (job.get("location"),
-                                     _daterange(job)) if b]
-            if meta_bits:
-                self.runs([("  |  ".join(meta_bits), REG, c["meta_small"], GRAY)])
+            if job.get("roles"):
+                for role in job["roles"]:
+                    self.role_line(role)
+            else:
+                self.entry_head(job)
             self.space(c["sp_after_entry_meta"])
             for b in job.get("bullets", []):
                 self.bullet(b)
@@ -360,6 +390,10 @@ def build(data: dict, ctx: dict) -> Layout:
     lay = Layout(ctx, kw=compile_keywords(data.get("bold_keywords")))
     lay.header(data.get("meta", {}))
     lay.summary(data.get("summary"))
+    if data.get("highlights"):
+        lay.section("Highlights")
+        for h in data["highlights"][:MAX_HIGHLIGHTS]:
+            lay.bullet(h)
 
     if data.get("experience"):
         lay.section("Experience")
@@ -613,7 +647,7 @@ def main():
     bold_kws = [k for k in (data.get("bold_keywords") or [])
                 if isinstance(k, str) and k.strip()]
     if bold_kws:
-        prose_fields = [data.get("summary", "")]
+        prose_fields = [data.get("summary", "")] + list(data.get("highlights") or [])
         for job in data.get("experience") or []:
             prose_fields += job.get("bullets") or []
         prose_fields += [p.get("description", "") for p in data.get("projects") or []]
@@ -636,6 +670,36 @@ def main():
         warnings.append(
             f"PROSE: {len(prose)} field(s) break the house style (no em dashes, no "
             "filler). Fix the text and re-render; see prose[] below."
+        )
+
+    highlights = [h for h in (data.get("highlights") or []) if str(h).strip()]
+    if len(highlights) > MAX_HIGHLIGHTS:
+        warnings.append(
+            f"HIGHLIGHTS: {len(highlights)} given, only the first {MAX_HIGHLIGHTS} were "
+            "rendered. The block is a hook, not a second resume; cut it yourself rather "
+            "than letting the renderer choose."
+        )
+
+    # Read the PDF back and confirm the facts survive it. Everything above this
+    # line reasons about the layout it just built; this is the only step that
+    # asks what the finished file gives back to something that cannot see.
+    parse = parse_check(data, pdf_path)
+    if parse["structure"]:
+        warnings.append(
+            f"PARSE: {len(parse['structure'])} entr(y/ies) carry facts in fields that "
+            "name nothing. A human reads the page correctly and a parser does not; see "
+            "parse.structure[] below."
+        )
+    if parse["missing"]:
+        warnings.append(
+            f"PARSE: {len(parse['missing'])} fact(s) do not come back out of the PDF "
+            "text. Something in the layout welded them to a neighbour; see "
+            "parse.missing[] below."
+        )
+    if not parse["extracted"]:
+        warnings.append(
+            "PARSE: skipped, pypdfium2 is not installed, so nothing confirmed the "
+            "rendered PDF still yields its own facts as text."
         )
 
     png_path = out_dir / f"{args.basename}.page1.png"
@@ -683,6 +747,8 @@ def main():
         "bold_keywords": bold_kws if bold_kws else [],
         "trimmed": trimmed,
         "prose": prose,
+        "parse": parse,
+        "highlights": len(highlights),
         "warnings": warnings,
     }
     (out_dir / "fit.json").write_text(json.dumps(metrics, indent=2))

@@ -159,6 +159,21 @@ def _meta_line(doc, bits, ctx):
     _spacing(p, after=ctx["sp_after_entry_meta"], line_pt=ctx["meta_small"] * ctx["lead"])
 
 
+def _role_line(doc, role, ctx):
+    """One short role on a single line. Mirrors Layout.role_line in render.py."""
+    p = doc.add_paragraph()
+    _set_font(p.add_run(role.get("title", "")), ctx["body"] + 0.5 * ctx["scale"],
+              bold=True, color=DARK)
+    if role.get("company"):
+        _set_font(p.add_run(f"  |  {role['company']}"), ctx["body"], color=GRAY)
+    tail = "  ·  ".join([b for b in (role.get("location"), _daterange(role)) if b])
+    if tail:
+        _set_font(p.add_run(f"  ·  {tail}"), ctx["meta_small"], color=GRAY)
+    _spacing(p, before=0, after=0,
+             line_pt=(ctx["body"] + 0.5 * ctx["scale"]) * ctx["lead"])
+    return p
+
+
 def _daterange(entry) -> str:
     start, end = entry.get("start"), entry.get("end")
     if start and end:
@@ -202,11 +217,22 @@ def render_docx(data: dict, ctx: dict, out_path):
         _prose_runs(p, data["summary"], ctx, kw)
         _spacing(p, after=ctx["sp_after_summary"], line_pt=ctx["body"] * ctx["lead"])
 
+    if data.get("highlights"):
+        _section(doc, "Highlights", ctx)
+        for h in data["highlights"][:3]:
+            _bullet(doc, h, ctx, num_id, kw)
+
     if data.get("experience"):
         _section(doc, "Experience", ctx)
         for job in data["experience"]:
-            _entry_head(doc, job.get("title", ""), job.get("company"), ctx)
-            _meta_line(doc, [job.get("location"), _daterange(job)], ctx)
+            if job.get("roles"):
+                for role in job["roles"]:
+                    _role_line(doc, role, ctx)
+                _spacing(doc.paragraphs[-1], after=ctx["sp_after_entry_meta"],
+                         line_pt=(ctx["body"] + 0.5 * ctx["scale"]) * ctx["lead"])
+            else:
+                _entry_head(doc, job.get("title", ""), job.get("company"), ctx)
+                _meta_line(doc, [job.get("location"), _daterange(job)], ctx)
             for b in job.get("bullets", []):
                 _bullet(doc, b, ctx, num_id, kw)
 

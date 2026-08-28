@@ -55,6 +55,8 @@ def lint_text(label: str, text: str) -> list[str]:
 def _walk_tailored(data: dict):
     yield "meta.title", (data.get("meta") or {}).get("title")
     yield "summary", data.get("summary")
+    for i, h in enumerate(data.get("highlights") or []):
+        yield f"highlights[{i}]", h
     for i, job in enumerate(data.get("experience") or []):
         who = job.get("company", f"experience[{i}]")
         for j, b in enumerate(job.get("bullets") or []):

@@ -53,9 +53,27 @@ technologies. Rewriting changes emphasis and wording, never facts. Do not add a
 technology because the posting wants it. Do not round 38% up to 40%. Do not promote a
 Software Engineer to Senior Software Engineer.
 
-Merging two short roles into one entry **is allowed** when it helps the page: use a
-combined title naming both (`"Data Engineer (NBCUniversal) · Cloud Engineer
-(Travelers)"`), an umbrella label for company (`"Earlier Co-Ops"`), and combined dates.
+Merging short roles into one entry **is allowed** when it helps the page, and there is
+exactly one way to do it: the `roles` list, one line per role, each keeping its own
+title, employer, location and dates, with the shared bullets on the entry.
+
+```json
+{ "roles": [
+    { "title": "Data Engineer Co-Op", "company": "NBCUniversal",
+      "location": "New York City, NY", "start": "Jan 2022", "end": "Jul 2022" },
+    { "title": "Cloud Engineer Co-Op", "company": "Travelers Insurance",
+      "location": "Hartford, CT", "start": "Jan 2020", "end": "Aug 2020" }
+  ],
+  "bullets": ["..."] }
+```
+
+Do **not** merge by writing a combined title (`"Data Engineer (NBCUniversal) · Cloud
+Engineer (Travelers)"`) with an umbrella label for company (`"Earlier Co-Ops"`). That
+shape costs the same single line and reads correctly to a person, who sees the employers
+sitting right there in the title. To anything reading the fields, the employer of that
+entry is the literal string "Earlier Co-Ops" and three real companies are gone, along
+with the dates each one was worked. `render.py` fails it with a `PARSE` warning.
+
 Keep each bullet attributable to the role that earned it.
 
 Never claim a skill the master doesn't support.
@@ -113,11 +131,15 @@ commentary in the file.
     "linkedin": "...", "github": "..."
   },
   "summary": "one paragraph",
+  "highlights": ["...", "...", "..."],
   "bold_keywords": ["Kubernetes", "distributed systems"],
   "experience": [
     { "company": "...", "title": "...", "location": "...",
       "start": "Mar 2022", "end": "Present",
-      "bullets": ["...", "..."] }
+      "bullets": ["...", "..."] },
+    { "roles": [ { "title": "...", "company": "...", "location": "...",
+                   "start": "Jan 2022", "end": "Jul 2022" } ],
+      "bullets": ["..."] }
   ],
   "skills": {
     "technical": ["..."], "tools": ["..."], "other": ["..."]
@@ -132,6 +154,19 @@ commentary in the file.
   "certifications": [ { "name": "...", "issuer": "...", "year": "2023" } ]
 }
 ```
+
+### The Highlights block
+
+`highlights` is an optional list of up to three bullets, rendered as a short section
+above Experience. **Leave it out by default.** The page is strongest when the experience
+bullets carry the argument, and a highlights block that restates them is padding that
+costs three lines of real content.
+
+Turn it on for one situation: a posting that will clearly be read by a machine or a
+volume screener before a person, where a resume with no block above Experience scores
+badly on rubrics looking for one. When it is on, write three bullets that are *not*
+copies of experience bullets, and never a prose paragraph. `render.py` renders at most
+three and warns if given more.
 
 Optional sections (`projects`, `certifications`) may be omitted or empty; the renderer
 drops their headers. `bold_keywords` is optional too: omit it unless the user asked for

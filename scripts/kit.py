@@ -10,12 +10,16 @@ Commands:
     validate [master]     Structural check of master_resume.json
     backup [master]       Timestamped copy into <home>/backups/
     doctor                Check deps, fonts, state, and render the example
+    log                   Record or update one application (company, role, status)
+    applications          Read the application log
+    backfill              Seed the log from resumes already in deliverables/
     init                  Create the home directory layout
 
 The home directory holds everything stateful:
     <home>/master_resume.json      the single source of truth
     <home>/backups/                every pre-edit snapshot
     <home>/deliverables/<company>/<role> generated resumes
+    <home>/applications.json       where each resume went and what came back
 """
 
 import argparse
@@ -301,6 +305,225 @@ def validate_master(data) -> tuple[list[str], list[str]]:
     # House style: content written here propagates into every future resume.
     warns += prose_lint(data, "master")
     return errors, warns
+
+
+
+# ---------------------------------------------------------------------------
+# The application log
+# ---------------------------------------------------------------------------
+#
+# The kit has always been able to say how good a resume is on the page and never
+# what happened to it. Four folders under deliverables/ record that four resumes
+# were generated; nothing records that two were sent, when, or whether anyone
+# wrote back. That gap costs two different things.
+#
+# The small one is duplicate work: a job search that runs daily re-surfaces
+# postings already applied to, because nothing tells it otherwise.
+#
+# The large one is that resume quality stays a matter of opinion. Every rubric,
+# including the ones sold with a rewrite attached, scores the document. Only a
+# log scores the outcome, and after twenty applications it can say which
+# headline, which framing, which class of role actually drew a reply. That
+# answer is worth more than any score, and it cannot be reconstructed later from
+# memory.
+#
+# Deliberately a flat JSON file next to the master: no service, no account, and
+# readable by the daily job search without this script.
+
+APPLICATIONS_FILE = "applications.json"
+
+# Ordered from earliest to latest, so a status can be compared as progress.
+STATUSES = ["generated", "applied", "screen", "interview", "onsite", "offer",
+            "rejected", "ghosted", "withdrawn"]
+
+
+def applications_path(home: Path) -> Path:
+    return home / APPLICATIONS_FILE
+
+
+def slugify(text: str) -> str:
+    out = "".join(ch.lower() if ch.isalnum() else "-" for ch in str(text))
+    return "-".join(part for part in out.split("-") if part)
+
+
+def load_applications(home: Path) -> dict:
+    path = applications_path(home)
+    if not path.exists():
+        return {"version": 1, "applications": []}
+    try:
+        doc = json.loads(path.read_text())
+    except json.JSONDecodeError as e:
+        raise SystemExit(f"applications.json is not valid JSON ({e}). Fix it by hand; "
+                         "this file is the only record of where things were sent.")
+    doc.setdefault("version", 1)
+    doc.setdefault("applications", [])
+    return doc
+
+
+def save_applications(home: Path, doc: dict) -> Path:
+    path = applications_path(home)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(doc, indent=2) + "\n")
+    return path
+
+
+def _today() -> str:
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+def _days_since(date_str):
+    if not date_str:
+        return None
+    try:
+        then = datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        return None
+    return (datetime.now() - then).days
+
+
+def _relative_to_home(path: Path, home: Path) -> str:
+    """Store deliverable paths relative to the home directory.
+
+    An absolute path recorded from an agent sandbox names a mount that will not
+    exist tomorrow, and reads as gibberish to the person whose folder it is.
+    """
+    try:
+        return str(Path(path).resolve().relative_to(Path(home).resolve()))
+    except ValueError:
+        return str(path)
+
+
+def _from_deliverable(directory: Path) -> dict:
+    """Company, role, headline and keywords, read from a generated resume."""
+    tailored = directory / "tailored_resume.json"
+    if not tailored.exists():
+        return {}
+    try:
+        data = json.loads(tailored.read_text())
+    except json.JSONDecodeError:
+        return {}
+    return {
+        "company": data.get("company"),
+        "role": data.get("job_title"),
+        "headline": (data.get("meta") or {}).get("title"),
+        "bold_keywords": data.get("bold_keywords") or [],
+        "highlights": bool(data.get("highlights")),
+    }
+
+
+def upsert_application(doc: dict, entry: dict) -> tuple[dict, bool]:
+    """Add or update by company/role key. Returns (record, created)."""
+    key = f"{slugify(entry['company'])}/{slugify(entry['role'])}"
+    for rec in doc["applications"]:
+        if rec.get("key") == key:
+            before = rec.get("status")
+            rec.update({k: v for k, v in entry.items() if v not in (None, [], "")})
+            if entry.get("status") and entry["status"] != before:
+                rec.setdefault("history", []).append(
+                    {"date": _today(), "status": entry["status"]})
+            return rec, False
+    rec = {
+        "key": key,
+        "company": entry["company"],
+        "role": entry["role"],
+        "status": entry.get("status") or "generated",
+        "tailored_on": entry.get("tailored_on") or _today(),
+        "applied_on": entry.get("applied_on"),
+        "posting_url": entry.get("posting_url"),
+        "source": entry.get("source"),
+        "headline": entry.get("headline"),
+        "bold_keywords": entry.get("bold_keywords") or [],
+        "deliverable": entry.get("deliverable"),
+        "notes": entry.get("notes") or "",
+        "history": [{"date": _today(), "status": entry.get("status") or "generated"}],
+    }
+    doc["applications"].append(rec)
+    return rec, True
+
+
+def cmd_log(args):
+    home, _ = resolve_home()
+    fields = {}
+    directory = None
+    if args.dir:
+        directory = Path(args.dir).expanduser().resolve()
+        fields.update(_from_deliverable(directory))
+        fields["deliverable"] = _relative_to_home(directory, home)
+    if args.company:
+        fields["company"] = args.company
+    if args.role:
+        fields["role"] = args.role
+    if not fields.get("company") or not fields.get("role"):
+        raise SystemExit("need --company and --role, or a --dir holding tailored_resume.json")
+
+    if args.status and args.status not in STATUSES:
+        raise SystemExit(f"unknown status {args.status!r}; one of: {', '.join(STATUSES)}")
+    fields["status"] = args.status
+    fields["posting_url"] = args.url
+    fields["source"] = args.source
+    fields["notes"] = args.note
+    if args.status == "applied" and not args.applied_on:
+        fields["applied_on"] = _today()
+    if args.applied_on:
+        fields["applied_on"] = args.applied_on
+
+    doc = load_applications(home)
+    rec, created = upsert_application(doc, fields)
+    path = save_applications(home, doc)
+    print(json.dumps({"file": str(path), "created": created, "record": rec}, indent=2))
+    return 0
+
+
+def cmd_applications(args):
+    home, _ = resolve_home()
+    doc = load_applications(home)
+    rows = doc["applications"]
+    if args.status:
+        rows = [r for r in rows if r.get("status") == args.status]
+    if args.open:
+        rows = [r for r in rows
+                if r.get("status") not in ("rejected", "withdrawn", "ghosted")]
+    for r in rows:
+        r["days_since_applied"] = _days_since(r.get("applied_on"))
+    rows.sort(key=lambda r: (r.get("applied_on") or r.get("tailored_on") or ""),
+              reverse=True)
+    counts = {}
+    for r in doc["applications"]:
+        counts[r.get("status", "?")] = counts.get(r.get("status", "?"), 0) + 1
+    print(json.dumps({
+        "file": str(applications_path(home)),
+        "total": len(doc["applications"]),
+        "by_status": counts,
+        "applications": rows,
+    }, indent=2))
+    return 0
+
+
+def cmd_backfill(args):
+    """Seed the log from resumes generated before it existed."""
+    home, _ = resolve_home()
+    out_dir = home / "deliverables"
+    doc = load_applications(home)
+    added = []
+    for tailored in sorted(out_dir.glob("*/*/tailored_resume.json")):
+        fields = _from_deliverable(tailored.parent)
+        if not fields.get("company") or not fields.get("role"):
+            continue
+        fields["deliverable"] = _relative_to_home(tailored.parent, home)
+        fields["tailored_on"] = datetime.fromtimestamp(
+            tailored.stat().st_mtime).strftime("%Y-%m-%d")
+        _, created = upsert_application(doc, fields)
+        if created:
+            added.append(fields["company"] + " / " + fields["role"])
+    path = save_applications(home, doc)
+    print(json.dumps({
+        "file": str(path),
+        "added": added,
+        "total": len(doc["applications"]),
+        "note": ("Statuses default to 'generated'. Mark the ones actually sent with "
+                 "`kit.py log --company X --role Y --status applied --applied-on YYYY-MM-DD`."),
+    }, indent=2))
+    return 0
 
 
 # ---------------------------------------------------------------------------
@@ -671,6 +894,23 @@ def main():
     p.add_argument("master", nargs="?")
     p.set_defaults(fn=cmd_backup)
     sub.add_parser("doctor").set_defaults(fn=cmd_doctor)
+    p = sub.add_parser("log", help="record or update one application")
+    p.add_argument("--dir", help="a deliverables/<company>/<role> folder to read from")
+    p.add_argument("--company")
+    p.add_argument("--role")
+    p.add_argument("--status", help=f"one of: {', '.join(STATUSES)}")
+    p.add_argument("--url", help="the posting URL")
+    p.add_argument("--source", help="where the posting was found")
+    p.add_argument("--applied-on", dest="applied_on", help="YYYY-MM-DD")
+    p.add_argument("--note", help="free text")
+    p.set_defaults(fn=cmd_log)
+    p = sub.add_parser("applications", help="read the application log")
+    p.add_argument("--status")
+    p.add_argument("--open", action="store_true",
+                   help="hide rejected, withdrawn and ghosted")
+    p.set_defaults(fn=cmd_applications)
+    sub.add_parser("backfill", help="seed the log from existing deliverables") \
+        .set_defaults(fn=cmd_backfill)
 
     args = ap.parse_args()
     raise SystemExit(args.fn(args))

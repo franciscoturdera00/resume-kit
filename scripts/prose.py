@@ -38,6 +38,35 @@ _FILLER_RE = re.compile(
     re.IGNORECASE,
 )
 
+# The summary and highlights are written about the candidate, never by a
+# narrator: "I led" reads as a cover letter, "leaves them able to build
+# without him" reads as a third party wrote it. Bullets under a role are
+# conventionally pronoun-free already, so only the top of the page is checked.
+PRONOUNS = ["i", "me", "my", "mine", "myself", "he", "him", "his", "himself",
+            "she", "her", "hers", "herself"]
+_PRONOUN_RE = re.compile(
+    r"(?<![\w'-])(" + "|".join(PRONOUNS) + r")(?![\w'-])", re.IGNORECASE,
+)
+
+
+def highlight_parts(h):
+    """A highlight is a bare string or {"text", "source"}. Return (text, source)
+    with source "" when absent, so every consumer reads the same shape."""
+    if isinstance(h, dict):
+        return str(h.get("text") or "").strip(), str(h.get("source") or "").strip()
+    return str(h or "").strip(), ""
+
+
+def lint_voice(label: str, text: str) -> list[str]:
+    """Pronoun check for the fields that introduce the candidate."""
+    if not isinstance(text, str) or not text:
+        return []
+    hits = sorted({m.group(1).lower() for m in _PRONOUN_RE.finditer(text)})
+    if hits:
+        return [f"{label}: pronoun(s) {', '.join(hits)}. Write the fact without a "
+                "narrator (\"Led...\", not \"I led...\" or \"he led...\")."]
+    return []
+
 
 def lint_text(label: str, text: str) -> list[str]:
     if not isinstance(text, str) or not text:
@@ -56,7 +85,7 @@ def _walk_tailored(data: dict):
     yield "meta.title", (data.get("meta") or {}).get("title")
     yield "summary", data.get("summary")
     for i, h in enumerate(data.get("highlights") or []):
-        yield f"highlights[{i}]", h
+        yield f"highlights[{i}]", highlight_parts(h)[0]
     for i, job in enumerate(data.get("experience") or []):
         who = job.get("company") or job.get("group") or f"experience[{i}]"
         for j, b in enumerate(job.get("bullets") or []):
@@ -102,6 +131,8 @@ def lint(data: dict, kind: str = "tailored") -> list[str]:
     out = []
     for label, text in walker(data):
         out += lint_text(label, text)
+        if kind == "tailored" and (label == "summary" or label.startswith("highlights[")):
+            out += lint_voice(label, text)
     return out
 
 

@@ -13,6 +13,7 @@ DOCX as the editable copy of the same document.
 """
 
 from emphasis import compile_keywords, split_runs
+from prose import highlight_parts
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
@@ -113,8 +114,10 @@ def _prose_runs(p, text, ctx, kw, color=DARK):
         _set_font(p.add_run(chunk), ctx["body"], bold=hit, color=color)
 
 
-def _bullet(doc, text, ctx, num_id, kw=None):
+def _bullet(doc, text, ctx, num_id, kw=None, source=""):
     p = doc.add_paragraph()
+    if source:  # a highlight's origin, leading in gray exactly as the PDF draws it
+        _set_font(p.add_run(f"{source}  \u00b7  "), ctx["body"], color=GRAY)
     _prose_runs(p, text, ctx, kw)
     pPr = p._p.get_or_add_pPr()
     numPr = OxmlElement("w:numPr")
@@ -220,7 +223,8 @@ def render_docx(data: dict, ctx: dict, out_path):
     if data.get("highlights"):
         _section(doc, "Highlights", ctx)
         for h in data["highlights"][:3]:
-            _bullet(doc, h, ctx, num_id, kw)
+            text, source = highlight_parts(h)
+            _bullet(doc, text, ctx, num_id, kw, source=source)
 
     if data.get("experience"):
         _section(doc, "Experience", ctx)

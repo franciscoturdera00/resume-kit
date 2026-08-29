@@ -14,9 +14,23 @@ directory, so get them right (the real employer, not a job board).
 **Pick a title variant** from `titles[]`, the closest match by tags, and rewrite it
 lightly for this role. It's the first line under the name; generic here is fatal.
 
-**Pick a summary variant** from `summaries[]` and rewrite it lightly. It must lead with
-the strongest match for *this* posting, not with whatever the user considers their
-identity.
+**Write the summary fresh for this posting.** Never copy a `summaries[]` variant from
+the master; those are raw material for facts, not text. The summary follows the shape
+recruiters and screeners expect, in this order:
+
+1. The posting's own job title (their exact words), and years of experience. Years
+   come from the master's dates; state them even when they fall short of the ask,
+   because a screener computes them from the dates anyway and an unstated number
+   reads as hiding.
+2. Two or three strengths the posting asks for, in its vocabulary, with one number
+   from the master attached to one of them.
+3. One clause on what the candidate brings to *this* employer's problem.
+
+Two to five sentences, one paragraph, never bullets: the summary is the one place on
+the page where prose is preferred, because it frames the story the bullets then prove.
+Written about the candidate, not by them: no "I", "my", "he", "him". `render.py` warns
+on sentence count and on pronouns. It must lead with the strongest match for *this*
+posting, not with whatever the user considers their identity.
 
 **Select experience bullets** by tag overlap with the posting, then by `priority`.
 Include every role the timeline needs (gaps invite questions), but bullet counts should
@@ -143,7 +157,7 @@ commentary in the file.
     "linkedin": "...", "github": "..."
   },
   "summary": "one paragraph",
-  "highlights": ["...", "...", "..."],
+  "highlights": [ { "text": "...", "source": "Employer or project name" } ],
   "bold_keywords": ["Kubernetes", "distributed systems"],
   "experience": [
     { "company": "...", "title": "...", "location": "...",
@@ -170,15 +184,27 @@ commentary in the file.
 ### The Highlights block
 
 `highlights` is an optional list of up to three bullets, rendered as a short section
-above Experience. **Leave it out by default.** The page is strongest when the experience
-bullets carry the argument, and a highlights block that restates them is padding that
-costs three lines of real content.
+between the summary and Experience. **You decide, at writing time, whether the page is
+stronger with it.** It is not on by default and not off by default; it is on when the
+three facts this posting cares most about would otherwise be scattered across different
+roles and projects, so that a screener reading top-down meets at least one of them below
+the fold. When the lead role already carries the posting's top three facts in its first
+bullets, the block is padding that costs three lines of experience, and it stays off.
+Volume screening (a large employer, a consultancy, a posting that will be scored before
+a person reads it) tips the decision toward on.
 
-Turn it on for one situation: a posting that will clearly be read by a machine or a
-volume screener before a person, where a resume with no block above Experience scores
-badly on rubrics looking for one. When it is on, write three bullets that are *not*
-copies of experience bullets, and never a prose paragraph. `render.py` renders at most
-three and warns if given more.
+Each highlight is an object, `{"text": ..., "source": ...}`. `source` is the employer or
+project the fact comes from, spelled as it appears on the page ("Sectra Inc", "Lilo,
+Multi-Agent Orchestrator (open source)" can be shortened to "Lilo"); the renderer draws
+it in gray ahead of the text, set off by a middot, so the reader can place the fact in the
+timeline without the bullet spending words on "at Sectra". Keep the text itself readable
+with the label removed; the label is a tag, not the subject of the sentence.
+
+**A highlight never restates an experience bullet or project description.** The block
+exists to say what the chronology cannot: a cross-role outcome, a fact whose best home
+is not any one bullet, the single number the posting will screen on. `render.py` warns
+when a highlight shares six consecutive words with anything below it, when one has no
+source, and when a source matches nothing on the page. Three at most; never a paragraph.
 
 Optional sections (`projects`, `certifications`) may be omitted or empty; the renderer
 drops their headers. `bold_keywords` is optional too: omit it unless the user asked for

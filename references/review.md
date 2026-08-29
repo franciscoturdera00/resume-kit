@@ -43,7 +43,12 @@ Open the posting and the tailored JSON side by side.
    will say so. See `tailoring.md`.)
 4. **Positioning.** Read only the name, headline, and summary. Do they read as a
    candidate for *this* posting, or as a generic engineer? If a competing applicant's
-   page would open identically, rewrite it.
+   page would open identically, rewrite it. Check the summary against its shape: the
+   posting's exact title and the years, two or three strengths in the posting's words
+   with one number, what the candidate brings; two to five sentences; no pronouns.
+   If there is a Highlights block, ask whether each bullet says something no
+   experience bullet says, and whether the page would be weaker without the block.
+   If not, it should come out.
 5. **Voice.** No em dashes anywhere. No filler words (`actually`, `honestly`,
    `genuinely`, `really`, `leverage`, `successfully`, `passionate`, and friends),
    worst of all in the summary. Every sentence carries a fact. `fit.json`'s `prose[]`

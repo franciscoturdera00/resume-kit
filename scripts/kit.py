@@ -230,11 +230,10 @@ def validate_master(data) -> tuple[list[str], list[str]]:
     titles = data.get("titles") or []
     summaries = data.get("summaries") or []
     _require(len(titles) >= 1, "titles[] is empty: need at least one headline variant", errors)
-    _require(len(summaries) >= 1, "summaries[] is empty: need at least one summary variant", errors)
     if len(titles) == 1:
         warns.append("only one title variant: 2-3 variants let tailoring position you per role")
-    if len(summaries) == 1:
-        warns.append("only one summary variant: 2-3 variants give tailoring room to reposition")
+    # summaries[] is optional raw material: the tailored summary is written fresh
+    # for each posting (see references/tailoring.md), never copied from here.
 
     all_tags = []
     for i, t in enumerate(titles):

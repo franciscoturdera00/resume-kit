@@ -29,7 +29,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from emphasis import compile_keywords, split_runs, unmatched_keywords  # noqa: E402
 from parsecheck import check as parse_check  # noqa: E402
-from prose import lint as prose_lint  # noqa: E402  (local, stdlib-only)
+from prose import highlight_parts, lint as prose_lint  # noqa: E402  (local, stdlib-only)
 
 try:
     from reportlab.lib.colors import HexColor
@@ -142,8 +142,10 @@ def ctx_for(scale: float) -> dict:
 
 def _tokens(text: str):
     """Words with their surrounding spaces kept, so a run like '  |  Company'
-    doesn't lose the gap that separates it from the run before it."""
-    return re.findall(r"\s*\S+\s*", text)
+    doesn't lose the gap that separates it from the run before it. A run that
+    is only whitespace (the gap between two adjacent bold keywords) is one
+    token too; dropping it welded "agentic workflows" into "agenticworkflows"."""
+    return re.findall(r"\s*\S+\s*|\s+", text)
 
 
 def wrap_runs(runs, width: float, indent: float = 0.0):
@@ -178,6 +180,8 @@ def wrap_runs(runs, width: float, indent: float = 0.0):
                 flush()  # the closing line's trailing space is dropped at draw
             if not cur:
                 tok = tok.lstrip()  # no dangling indent at the start of a line
+                if not tok:
+                    continue
             push(x, tok, font, size, color)
             x += stringWidth(tok, font, size)
     if cur:
@@ -274,13 +278,19 @@ class Layout:
         self.rule(ACCENT)
         self.space(c["sp_after_section"])
 
-    def bullet(self, text):
+    def bullet(self, text, source=""):
+        """One bullet. `source` (a highlight's origin) leads the text in gray,
+        set off by a middot, so the reader places the fact in the timeline
+        without the bullet spending words on "at Sectra". It leads rather than
+        trails because a trailing tag wraps into an orphan line ("· Sectra" alone
+        on line two) whenever the text runs close to the margin."""
         c = self.ctx
         indent = c["bullet_indent"]
-        self.runs(
-            [("•   ", REG, c["body"], ACCENT)] + self.prose_runs(text, c["body"], DARK),
-            indent=indent,
-        )
+        runs = [("•   ", REG, c["body"], ACCENT)]
+        if source:
+            runs.append((f"{source}  ·  ", REG, c["body"], GRAY))
+        runs += self.prose_runs(text, c["body"], DARK)
+        self.runs(runs, indent=indent)
         self.space(c["sp_after_bullet"])
 
     def entry_head(self, job):
@@ -404,7 +414,7 @@ def build(data: dict, ctx: dict) -> Layout:
     if data.get("highlights"):
         lay.section("Highlights")
         for h in data["highlights"][:MAX_HIGHLIGHTS]:
-            lay.bullet(h)
+            lay.bullet(*highlight_parts(h))
 
     if data.get("experience"):
         lay.section("Experience")
@@ -445,6 +455,71 @@ def bullet_lists(job: dict):
         if isinstance(role.get("bullets"), list):
             out.append((role["bullets"], role.get("company") or who))
     return out
+
+
+def _word_shingles(text: str, n: int = 6) -> set:
+    words = re.findall(r"[a-z0-9$%+]+", (text or "").lower())
+    return {" ".join(words[i:i + n]) for i in range(max(0, len(words) - n + 1))}
+
+
+def highlight_checks(data: dict) -> list[str]:
+    """A highlight earns its line by saying something the chronology does not,
+    and by saying where it came from. Two mechanical checks for that:
+
+    - every highlight names a `source` (the employer or project on the page)
+    - no highlight restates an experience bullet or project description, which
+      is measured as sharing any run of six words with one
+    """
+    out = []
+    body = []
+    for job in data.get("experience") or []:
+        for lst, _ in bullet_lists(job):
+            body += lst
+    body += [p.get("description", "") for p in data.get("projects") or []]
+    body_shingles = set()
+    for text in body:
+        body_shingles |= _word_shingles(text)
+    names = set()
+    for job in data.get("experience") or []:
+        names.add((job.get("company") or "").strip().lower())
+        for role in job.get("roles") or []:
+            names.add((role.get("company") or "").strip().lower())
+    for p in data.get("projects") or []:
+        names.add((p.get("name") or "").strip().lower())
+    names.discard("")
+    for i, h in enumerate((data.get("highlights") or [])[:MAX_HIGHLIGHTS]):
+        text, source = highlight_parts(h)
+        if not text:
+            continue
+        if not source:
+            out.append(f"HIGHLIGHTS: highlights[{i}] has no source. Give it the employer "
+                       "or project it came from, as {\"text\": ..., \"source\": ...}.")
+        elif not any(source.lower() == n or source.lower() in n or n in source.lower()
+                     for n in names):
+            out.append(f"HIGHLIGHTS: highlights[{i}] source {source!r} matches no employer "
+                       "or project on the page. Use the name as it appears there.")
+        if _word_shingles(text) & body_shingles:
+            out.append(f"HIGHLIGHTS: highlights[{i}] restates an experience bullet or "
+                       "project description (six words in common). A highlight has to "
+                       "say something the chronology does not; rewrite or drop it.")
+    return out
+
+
+def summary_checks(text) -> list[str]:
+    """The summary is written fresh for each posting, to a fixed shape: two to
+    five sentences, no narrator. The pronoun rule lives in prose.py; this is the
+    length half."""
+    if not isinstance(text, str) or not text.strip():
+        return ["SUMMARY: no summary. Write one for this posting; see tailoring.md."]
+    sentences = [x for x in re.split(r"(?<=[.!?])\s+", text.strip()) if x]
+    if len(sentences) < 2:
+        return ["SUMMARY: one sentence. Conventions want two to five: the posting's "
+                "title and years first, then two or three strengths it asks for with "
+                "one number, then what the candidate brings."]
+    if len(sentences) > 5:
+        return [f"SUMMARY: {len(sentences)} sentences. Cut to five or fewer; the rest "
+                "belongs in bullets where it can be scanned."]
+    return []
 
 
 def _trim_once(data: dict) -> str | None:
@@ -682,7 +757,8 @@ def main():
     bold_kws = [k for k in (data.get("bold_keywords") or [])
                 if isinstance(k, str) and k.strip()]
     if bold_kws:
-        prose_fields = [data.get("summary", "")] + list(data.get("highlights") or [])
+        prose_fields = [data.get("summary", "")] + [
+            highlight_parts(h)[0] for h in data.get("highlights") or []]
         for job in data.get("experience") or []:
             for lst, _ in bullet_lists(job):
                 prose_fields += lst
@@ -708,13 +784,15 @@ def main():
             "filler). Fix the text and re-render; see prose[] below."
         )
 
-    highlights = [h for h in (data.get("highlights") or []) if str(h).strip()]
+    highlights = [h for h in (data.get("highlights") or []) if highlight_parts(h)[0]]
     if len(highlights) > MAX_HIGHLIGHTS:
         warnings.append(
             f"HIGHLIGHTS: {len(highlights)} given, only the first {MAX_HIGHLIGHTS} were "
             "rendered. The block is a hook, not a second resume; cut it yourself rather "
             "than letting the renderer choose."
         )
+    warnings += highlight_checks(data)
+    warnings += summary_checks(data.get("summary"))
 
     # Read the PDF back and confirm the facts survive it. Everything above this
     # line reasons about the layout it just built; this is the only step that

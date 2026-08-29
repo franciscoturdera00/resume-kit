@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import parsecheck as pc  # noqa: E402
+import prose  # noqa: E402
 
 FAILURES = []
 
@@ -45,6 +46,13 @@ def check(name: str, condition: bool, detail: str = ""):
     else:
         print(f"  FAIL  {name}{(': ' + detail) if detail else ''}")
         FAILURES.append(name)
+
+check("a pronoun in the summary is flagged",
+      any("pronoun" in m for m in prose.lint({"summary": "Leaves them able to build without him."})))
+check("a pronoun-free summary is quiet",
+      prose.lint({"summary": "Engineer who ships. Its API stays up."}) == [])
+check("highlight objects lint their text, not their source",
+      prose.lint({"highlights": [{"text": "Fine text", "source": "My Company"}]}) == [])
 
 
 # --- structure: the umbrella-company shape ---------------------------------
@@ -139,6 +147,54 @@ if HAVE_DEPS:
           repr(dropped))
     check("the trimmer actually removed it",
           len(fat["experience"][0]["roles"][0]["bullets"]) == 2)
+
+    # Two bold keywords with only a space between them. split_runs hands the
+    # wrapper a whitespace-only run for the gap; a tokenizer that skips it
+    # welded "agentic workflows" into "agenticworkflows" on the page.
+    gap = [("agentic", render.BOLD, 10, "c"), (" ", render.REG, 10, "c"),
+           ("workflows", render.BOLD, 10, "c")]
+    line = render.wrap_runs(gap, 500)[0]
+    drawn = "".join(piece[1] for piece in line)
+    check("a space between adjacent bold keywords survives wrapping",
+          drawn == "agentic workflows", repr(drawn))
+    check("the bold pieces are not merged across the gap",
+          [piece[2] for piece in line] == [render.BOLD, render.REG, render.BOLD],
+          repr([piece[2] for piece in line]))
+    narrow = render.wrap_runs(gap, 40)
+    check("a line break at the gap leaves no leading space on the next line",
+          narrow[1][0][1] == "workflows", repr(narrow))
+
+    # Highlights carry a source and must not restate the chronology.
+    hl = {
+        "summary": "Engineer with three years. Ships things. Brings depth.",
+        "highlights": [
+            {"text": "Cut demo infrastructure cost by $230K annually", "source": "Sectra Inc"},
+            {"text": "Built a thing nobody below mentions", "source": "Nowhere Corp"},
+            "Bare string with no source at all",
+        ],
+        "experience": [{"company": "Sectra Inc", "bullets": [
+            "Cut demo infrastructure cost by $230K annually through savings plans."]}],
+    }
+    msgs = render.highlight_checks(hl)
+    check("a highlight that restates a bullet is flagged",
+          any("highlights[0]" in m and "restates" in m for m in msgs), repr(msgs))
+    check("a source that matches nothing on the page is flagged",
+          any("highlights[1]" in m and "matches no employer" in m for m in msgs), repr(msgs))
+    check("a highlight with no source is flagged",
+          any("highlights[2]" in m and "no source" in m for m in msgs), repr(msgs))
+    check("a sourced, original highlight passes",
+          not any("highlights[0]" in m and "source" in m for m in msgs), repr(msgs))
+    check("the summary shape check is quiet on 2-5 sentences",
+          render.summary_checks(hl["summary"]) == [])
+    check("a one-sentence summary is flagged",
+          any("one sentence" in m for m in render.summary_checks("Just one.")))
+    check("a missing summary is flagged",
+          any("no summary" in m for m in render.summary_checks("")))
+    lay = render.Layout(render.ctx_for(1.0), kw=None)
+    lay.bullet("fact", source="Sectra Inc")
+    texts = [op[3] for op in lay.ops if op[0] == "text"]
+    check("the source tag leads the highlight in its own gray piece",
+          any(t.startswith("Sectra Inc") for t in texts), repr(texts))
 
 # --- round trip: render, read it back, expect silence ----------------------
 

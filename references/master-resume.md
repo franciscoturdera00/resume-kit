@@ -11,7 +11,7 @@ valid instance. Read it when the shape is unclear.
   "meta":    { "name", "title", "email", "phone", "location", "linkedin", "github" },
 
   "titles":    [ { "id", "text", "tags" } ],              // 2-3 headline variants
-  "summaries": [ { "id", "text", "tags", "priority" } ],  // 2-3 summary variants
+  "summaries": [ { "id", "text", "tags", "priority" } ],  // optional; raw material only, never copied onto a page
 
   "skills": { "<category>": ["item", ...] },              // categories are free-form
 

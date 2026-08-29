@@ -81,6 +81,9 @@ It writes a `CLAUDE.md` explaining where the master is, that an empty home is no
 **2. Read the whole master resume.** Not a grep. Selection quality depends on seeing every bullet, tag, and project version.
 
 **3. Write the tailored JSON.** Rules, voice, and output schema: `references/tailoring.md`.
+The summary is written fresh for every posting, never copied from the master. The
+Highlights block is your call per posting: on when it puts the posting's top three facts
+where a top-down reader meets them first, off when the lead role already does that.
 Ask the user once whether they want the posting's keywords bolded on the page; if yes,
 include the optional top-level `bold_keywords` list (4-8 exact terms that appear in your
 prose), and if not, leave the field out. Save to
@@ -137,7 +140,8 @@ log existed.
 | `ROOM` still set after adding everything relevant | Master is thin | Say so, and offer to enrich the master |
 | `PARSE` (structure) | An entry carries facts in a field that names nothing, usually an umbrella company like "Earlier Co-Ops" | Rewrite that entry with the `roles` list; see `tailoring.md` |
 | `PARSE` (missing) | A fact in the JSON does not come back out of the PDF text | The layout welded it to a neighbour. Report it; do not hand the file over as ATS-safe |
-| `HIGHLIGHTS` | More than three highlights given | Cut it to three yourself |
+| `HIGHLIGHTS` | More than three given, one has no `source`, or one restates a bullet below it | Cut to three, add the source, or rewrite it to say something the chronology does not |
+| `SUMMARY` | Missing, one sentence, or more than five | Write it to the shape in `tailoring.md`: title and years, strengths with one number, what you bring |
 
 `scale` is the typographic size the fitter settled on, and `body_pt` is what that means in points. Body text never renders below `min_body_pt` (9.5pt by default, override with `--min-body-pt`). Once the floor is reached the renderer trims content instead of shrinking type, so `TRIMMED` at the lowest scale means the page is genuinely too full: cut content, do not reach for smaller type. Margins are 0.5in on all four sides, in both the PDF and the .docx.
 

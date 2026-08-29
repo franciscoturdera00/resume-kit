@@ -65,7 +65,8 @@ Read `resume.page1.png`. Look at it; don't infer it from the JSON.
    on a page that still has room. If `page_is_full` is `false`, name the specific
    master entry going in next and re-render before reviewing anything else.
 7. **Bullet shape.** Any bullet running to three lines? Any one-line orphan trailing a
-   long bullet? Any line ending with a single dangling word?
+   long bullet? `fit.json`'s `orphans[]` lists every bullet whose last line holds one or
+   two words; each is a full line spent on almost nothing. Tighten or extend each one.
 8. **Balance.** Does one section dominate for no reason? Does the most relevant role
    have the most bullets?
 9. **Hierarchy.** Name > sections > entries > bullets, readable at a glance in that

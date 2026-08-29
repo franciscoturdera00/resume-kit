@@ -95,6 +95,7 @@ ROOM_SLACK_LINES = 2
 # the page into a second resume and pushes the experience that backs it below the
 # fold. Omit the field entirely for the normal case.
 MAX_HIGHLIGHTS = 3
+ORPHAN_WORDS = 2  # a wrapped bullet ending in this many words or fewer wastes its last line
 
 
 def scales_for(min_body_pt: float) -> list:
@@ -202,6 +203,7 @@ class Layout:
         self.ctx = ctx
         self.kw = kw  # compiled bold_keywords matcher, or None
         self.ops = []
+        self.orphans = []  # (text, tail): bullets whose last line is one or two words
         self.y = 0.0
 
     # -- primitives ---------------------------------------------------------
@@ -290,7 +292,11 @@ class Layout:
         if source:
             runs.append((f"{source}  ·  ", REG, c["body"], GRAY))
         runs += self.prose_runs(text, c["body"], DARK)
-        self.runs(runs, indent=indent)
+        lines = self.runs(runs, indent=indent)
+        if len(lines) > 1:
+            tail = "".join(piece[1] for piece in lines[-1]).strip()
+            if len(tail.split()) <= ORPHAN_WORDS:
+                self.orphans.append((text, tail))
         self.space(c["sp_after_bullet"])
 
     def entry_head(self, job):
@@ -793,6 +799,12 @@ def main():
         )
     warnings += highlight_checks(data)
     warnings += summary_checks(data.get("summary"))
+    for text, tail in lay.orphans:
+        warnings.append(
+            f"ORPHAN: a bullet ends with {tail!r} alone on its last line. That line "
+            "costs as much as a full one; cut a few words so it pulls back, or add a "
+            f"fact so the line earns its space. Bullet: {text[:70]}..."
+        )
 
     # Read the PDF back and confirm the facts survive it. Everything above this
     # line reasons about the layout it just built; this is the only step that
@@ -863,6 +875,7 @@ def main():
         "prose": prose,
         "parse": parse,
         "highlights": len(highlights),
+        "orphans": [tail for _, tail in lay.orphans],
         "warnings": warnings,
     }
     (out_dir / "fit.json").write_text(json.dumps(metrics, indent=2))

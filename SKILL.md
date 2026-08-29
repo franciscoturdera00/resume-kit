@@ -141,6 +141,7 @@ log existed.
 | `PARSE` (structure) | An entry carries facts in a field that names nothing, usually an umbrella company like "Earlier Co-Ops" | Rewrite that entry with the `roles` list; see `tailoring.md` |
 | `PARSE` (missing) | A fact in the JSON does not come back out of the PDF text | The layout welded it to a neighbour. Report it; do not hand the file over as ATS-safe |
 | `HIGHLIGHTS` | More than three given, one has no `source`, or one restates a bullet below it | Cut to three, add the source, or rewrite it to say something the chronology does not |
+| `ORPHAN` | A wrapped bullet ends with one or two words alone on its last line | Cut a few words so it pulls back onto the line above, or add a fact so the line is earned |
 | `SUMMARY` | Missing, one sentence, or more than five | Write it to the shape in `tailoring.md`: title and years, strengths with one number, what you bring |
 
 `scale` is the typographic size the fitter settled on, and `body_pt` is what that means in points. Body text never renders below `min_body_pt` (9.5pt by default, override with `--min-body-pt`). Once the floor is reached the renderer trims content instead of shrinking type, so `TRIMMED` at the lowest scale means the page is genuinely too full: cut content, do not reach for smaller type. Margins are 0.5in on all four sides, in both the PDF and the .docx.

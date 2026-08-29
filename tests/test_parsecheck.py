@@ -196,6 +196,27 @@ if HAVE_DEPS:
     check("the source tag leads the highlight in its own gray piece",
           any(t.startswith("Sectra Inc") for t in texts), repr(texts))
 
+    lay = render.Layout(render.ctx_for(1.0), kw=None)
+    lay.bullet("word " * 40 + "end.")  # wraps; whether the tail is short depends on width
+    lay2 = render.Layout(render.ctx_for(1.0), kw=None)
+    lay2.bullet("short one-line bullet")
+    check("a one-line bullet is never an orphan", lay2.orphans == [], repr(lay2.orphans))
+    orphan_lay = render.Layout(render.ctx_for(1.0), kw=None)
+    # Build a bullet whose wrap leaves exactly one word on the second line.
+    text = "x" * 5
+    while True:
+        orphan_lay.orphans.clear()
+        orphan_lay.ops.clear()
+        orphan_lay.y = 0.0
+        orphan_lay.bullet(text + " tail")
+        if orphan_lay.orphans:
+            break
+        text += " xxxx"
+        if len(text) > 2000:
+            break
+    check("a bullet that wraps one word onto its last line is reported",
+          orphan_lay.orphans and orphan_lay.orphans[0][1] == "tail", repr(orphan_lay.orphans))
+
 # --- round trip: render, read it back, expect silence ----------------------
 
 if not HAVE_DEPS:

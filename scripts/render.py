@@ -95,6 +95,7 @@ ROOM_SLACK_LINES = 2
 # the page into a second resume and pushes the experience that backs it below the
 # fold. Omit the field entirely for the normal case.
 MAX_HIGHLIGHTS = 3
+MAX_BOLD_KEYWORDS = 12  # bold_keywords longer than this draws a BOLD warning
 ORPHAN_WORDS = 2  # a wrapped bullet ending in this many words or fewer wastes its last line
 
 
@@ -776,11 +777,11 @@ def main():
                 f"description: {', '.join(misses)}. Drop them, or rewrite the text to "
                 "use the posting's term."
             )
-        if len(bold_kws) > 8:
+        if len(bold_kws) > MAX_BOLD_KEYWORDS:
             warnings.append(
                 f"BOLD: {len(bold_kws)} keywords is too many; a page where everything "
-                "is emphasized emphasizes nothing. Keep the 4-8 terms the posting "
-                "cares most about."
+                f"is emphasized emphasizes nothing. Keep at most {MAX_BOLD_KEYWORDS} "
+                "terms the posting cares most about."
             )
 
     prose = prose_lint(data, "tailored")

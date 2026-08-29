@@ -53,7 +53,7 @@ with the posting's own stack first. Drop what the posting has no use for.
 
 **Offer keyword bolding.** Ask the user once per tailoring run whether they want the
 posting's keywords bolded on the page. If yes, add a top-level `bold_keywords` list:
-4-8 exact terms lifted from the posting that literally appear in your summary, bullets,
+4-12 exact terms lifted from the posting that literally appear in your summary, bullets,
 or project descriptions (multi-word phrases allowed). The renderer bolds every
 case-insensitive whole-word occurrence in those three places only; skills lists,
 headings, and titles are untouched. Bolding is emphasis, so it obeys the same rule as

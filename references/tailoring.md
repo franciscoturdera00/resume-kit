@@ -61,11 +61,23 @@ title, employer, location and dates, with the shared bullets on the entry.
 { "roles": [
     { "title": "Data Engineer Co-Op", "company": "NBCUniversal",
       "location": "New York City, NY", "start": "Jan 2022", "end": "Jul 2022" },
+    { "title": "Backend Software Engineer Co-Op", "company": "Spotify",
+      "location": "Boston, MA", "start": "Jan 2021", "end": "Aug 2021",
+      "bullets": ["Raised user retention by 12% with personalization work on the Java backend."] },
     { "title": "Cloud Engineer Co-Op", "company": "Travelers Insurance",
-      "location": "Hartford, CT", "start": "Jan 2020", "end": "Aug 2020" }
-  ],
-  "bullets": ["..."] }
+      "location": "Hartford, CT", "start": "Jan 2020", "end": "Aug 2020",
+      "bullets": ["Automated AWS provisioning through CLI scripts, cutting setup from 20 minutes to 2."] }
+  ] }
 ```
+
+**Put each bullet on the role that earned it**, as above, and the renderer draws it directly
+beneath that role. A role with nothing worth saying gets no bullets and stays a single line.
+
+The entry also accepts a shared `bullets` list, drawn after every role, but reach for it only
+for something that genuinely spans them. A bullet parked there has to name its own employer
+("...on the Java backend **at Spotify**") because it sits under whichever role came last, and
+that is two costs for one line: words spent on scaffolding, and an attribution that lives in
+prose where nothing can check it. On the role, the same fact needs no preamble.
 
 Do **not** merge by writing a combined title (`"Data Engineer (NBCUniversal) · Cloud
 Engineer (Travelers)"`) with an umbrella label for company (`"Earlier Co-Ops"`). That
@@ -138,8 +150,8 @@ commentary in the file.
       "start": "Mar 2022", "end": "Present",
       "bullets": ["...", "..."] },
     { "roles": [ { "title": "...", "company": "...", "location": "...",
-                   "start": "Jan 2022", "end": "Jul 2022" } ],
-      "bullets": ["..."] }
+                   "start": "Jan 2022", "end": "Jul 2022",
+                   "bullets": ["..."] } ] }
   ],
   "skills": {
     "technical": ["..."], "tools": ["..."], "other": ["..."]

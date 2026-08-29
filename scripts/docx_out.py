@@ -227,9 +227,15 @@ def render_docx(data: dict, ctx: dict, out_path):
         for job in data["experience"]:
             if job.get("roles"):
                 for role in job["roles"]:
-                    _role_line(doc, role, ctx)
-                _spacing(doc.paragraphs[-1], after=ctx["sp_after_entry_meta"],
-                         line_pt=(ctx["body"] + 0.5 * ctx["scale"]) * ctx["lead"])
+                    p_role = _role_line(doc, role, ctx)
+                    if role.get("bullets"):
+                        _spacing(p_role, after=ctx["sp_after_entry_meta"],
+                                 line_pt=(ctx["body"] + 0.5 * ctx["scale"]) * ctx["lead"])
+                        for b in role["bullets"]:
+                            _bullet(doc, b, ctx, num_id, kw)
+                if not job.get("bullets"):
+                    _spacing(doc.paragraphs[-1], after=ctx["sp_after_entry_meta"],
+                             line_pt=ctx["body"] * ctx["lead"])
             else:
                 _entry_head(doc, job.get("title", ""), job.get("company"), ctx)
                 _meta_line(doc, [job.get("location"), _daterange(job)], ctx)

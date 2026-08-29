@@ -301,6 +301,12 @@ class Layout:
         into one entry, an umbrella company and every employer buried in the
         title, saves the same line and throws the employers away; see
         parsecheck.py. A line each keeps Spotify a company and Jan 2021 a date.
+
+        A role may carry its own `bullets`, drawn directly beneath it. Prefer
+        that to hanging every bullet off the entry: under a shared block a
+        bullet has to name its own employer ("...on the Java backend at
+        Spotify") because it sits under whichever role happens to be last, and
+        that scaffolding is both wasted words and a fact no structure backs.
         """
         c = self.ctx
         head = [(role.get("title", ""), BOLD, c["body"] + 0.5 * c["scale"], DARK)]
@@ -318,11 +324,16 @@ class Layout:
             if job.get("roles"):
                 for role in job["roles"]:
                     self.role_line(role)
+                    if role.get("bullets"):
+                        self.space(c["sp_after_entry_meta"])
+                        for b in role["bullets"]:
+                            self.bullet(b)
             else:
                 self.entry_head(job)
-            self.space(c["sp_after_entry_meta"])
-            for b in job.get("bullets", []):
-                self.bullet(b)
+            if job.get("bullets"):
+                self.space(c["sp_after_entry_meta"])
+                for b in job["bullets"]:
+                    self.bullet(b)
 
     def skills(self, skills):
         c = self.ctx
@@ -417,24 +428,48 @@ def build(data: dict, ctx: dict) -> Layout:
 # Fit solving
 # ---------------------------------------------------------------------------
 
+def bullet_lists(job: dict):
+    """Every mutable bullet list in one entry, with who owns it.
+
+    An entry keeps bullets in one of two places, and anything that walks them
+    has to look in both: the entry itself, and each role when the entry is a
+    group of short roles. Missing the second is a silent failure, since a bullet
+    the trimmer cannot see is a bullet it cannot drop, and one the linter cannot
+    see is an em dash that ships.
+    """
+    out = []
+    who = job.get("company") or job.get("group") or "experience"
+    if isinstance(job.get("bullets"), list):
+        out.append((job["bullets"], who))
+    for role in job.get("roles") or []:
+        if isinstance(role.get("bullets"), list):
+            out.append((role["bullets"], role.get("company") or who))
+    return out
+
+
 def _trim_once(data: dict) -> str | None:
     """Drop the single least-load-bearing item. Returns a description, or None."""
     exp = data.get("experience") or []
-    counts = [(len(j.get("bullets") or []), i) for i, j in enumerate(exp)]
-    if counts:
-        n, idx = max(counts)
-        if n >= 3:
-            dropped = exp[idx]["bullets"].pop()
-            return f"bullet from {exp[idx].get('company', 'experience')}: {dropped[:60]}..."
+    lists = [pair for job in exp for pair in bullet_lists(job)]
+
+    def longest(minimum: int):
+        eligible = [(lst, who) for lst, who in lists if len(lst) >= minimum]
+        if not eligible:
+            return None
+        return max(eligible, key=lambda pair: len(pair[0]))
+
+    pick = longest(3)
+    if pick:
+        lst, who = pick
+        return f"bullet from {who}: {lst.pop()[:60]}..."
     projects = data.get("projects") or []
     if len(projects) > 1:
         dropped = projects.pop()
         return f"project: {dropped.get('name', '?')}"
-    if counts:
-        n, idx = max(counts)
-        if n >= 2:
-            dropped = exp[idx]["bullets"].pop()
-            return f"bullet from {exp[idx].get('company', 'experience')}: {dropped[:60]}..."
+    pick = longest(2)
+    if pick:
+        lst, who = pick
+        return f"bullet from {who}: {lst.pop()[:60]}..."
     return None
 
 
@@ -649,7 +684,8 @@ def main():
     if bold_kws:
         prose_fields = [data.get("summary", "")] + list(data.get("highlights") or [])
         for job in data.get("experience") or []:
-            prose_fields += job.get("bullets") or []
+            for lst, _ in bullet_lists(job):
+                prose_fields += lst
         prose_fields += [p.get("description", "") for p in data.get("projects") or []]
         misses = unmatched_keywords(bold_kws, prose_fields)
         if misses:

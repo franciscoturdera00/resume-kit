@@ -27,6 +27,17 @@ import parsecheck as pc  # noqa: E402
 
 FAILURES = []
 
+# render.py imports reportlab at module scope, so anything reaching into it is
+# gated on the renderer's dependencies being present. parsecheck and prose are
+# standard library and always run, which is what keeps this file useful as a
+# quick local check.
+try:
+    import reportlab  # noqa: F401
+    import pypdfium2  # noqa: F401
+    HAVE_DEPS = True
+except ImportError:
+    HAVE_DEPS = False
+
 
 def check(name: str, condition: bool, detail: str = ""):
     if condition:
@@ -53,9 +64,9 @@ ROLES = {"experience": [{
         {"title": "Data Engineer Co-Op", "company": "NBCUniversal",
          "location": "New York City, NY", "start": "Jan 2022", "end": "Jul 2022"},
         {"title": "Backend Software Engineer Co-Op", "company": "Spotify",
-         "location": "Boston, MA", "start": "Jan 2021", "end": "Aug 2021"},
+         "location": "Boston, MA", "start": "Jan 2021", "end": "Aug 2021",
+         "bullets": ["Raised user retention by 12% on the Java backend."]},
     ],
-    "bullets": ["Raised user retention by 12% on the Java backend at Spotify."],
 }]}
 
 GOOD = {"experience": [{
@@ -97,22 +108,44 @@ check("an en dash in the extracted text still matches",
 check("a lost space still matches",
       pc.missing_facts(GOOD, "SectraInc AI Enablement Lead Shelton,CT Feb 2026 - Present") == [])
 
-# --- round trip: render, read it back, expect silence ----------------------
+# --- bullets living on a role must not be invisible ------------------------
+#
+# Three separate things used to read job["bullets"] and nothing else. A bullet
+# the trimmer cannot see cannot be dropped to save a page; one the linter cannot
+# see ships with an em dash in it. Both fail silently, which is the only reason
+# these are worth a test.
 
-try:
-    import reportlab  # noqa: F401
-    import pypdfium2  # noqa: F401
-    HAVE_DEPS = True
-except ImportError:
-    HAVE_DEPS = False
+import prose  # noqa: E402
 
-if not HAVE_DEPS:
-    print("  SKIP  round trip (reportlab or pypdfium2 not installed). "
-          "Run under uv to include it.")
-else:
-    sys.argv = ["render.py"]
+dirty = {"experience": [{"group": "Earlier Co-Ops", "roles": [
+    {"title": "Co-Op", "company": "Spotify",
+     "bullets": ["Raised retention, leveraging a truly seamless pipeline."]}]}]}
+check("the linter reads role bullets", len(prose.lint(dirty, "tailored")) > 0)
+
+if HAVE_DEPS:
     import render  # noqa: E402
 
+    lists = render.bullet_lists(ROLES["experience"][0])
+    check("role bullets are walkable", len(lists) == 1 and lists[0][1] == "Spotify",
+          repr(lists))
+    check("entry and role bullets are both walkable",
+          len(render.bullet_lists({"company": "X", "bullets": ["a"],
+                                   "roles": [{"company": "Y", "bullets": ["b"]}]})) == 2)
+
+    fat = {"experience": [{"roles": [{"title": "T", "company": "C",
+                                      "bullets": ["one", "two", "three"]}]}]}
+    dropped = render._trim_once(fat)
+    check("the trimmer can drop a role bullet", dropped is not None and "C" in dropped,
+          repr(dropped))
+    check("the trimmer actually removed it",
+          len(fat["experience"][0]["roles"][0]["bullets"]) == 2)
+
+# --- round trip: render, read it back, expect silence ----------------------
+
+if not HAVE_DEPS:
+    print("  SKIP  renderer checks and round trip (reportlab or pypdfium2 not "
+          "installed). Run under uv to include them.")
+else:
     example = json.loads((ROOT / "assets" / "tailored_resume.example.json").read_text())
     example["experience"].append(ROLES["experience"][0])  # exercise the roles path
 

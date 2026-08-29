@@ -58,9 +58,17 @@ def _walk_tailored(data: dict):
     for i, h in enumerate(data.get("highlights") or []):
         yield f"highlights[{i}]", h
     for i, job in enumerate(data.get("experience") or []):
-        who = job.get("company", f"experience[{i}]")
+        who = job.get("company") or job.get("group") or f"experience[{i}]"
         for j, b in enumerate(job.get("bullets") or []):
             yield f"{who} bullet {j + 1}", b
+        # Bullets can hang off a role instead of the entry. Walking only the
+        # entry would let an em dash through in exactly the entries a writer is
+        # least likely to reread.
+        for role in job.get("roles") or []:
+            rwho = role.get("company") or who
+            yield f"{rwho} title", role.get("title")
+            for j, b in enumerate(role.get("bullets") or []):
+                yield f"{rwho} bullet {j + 1}", b
     for i, p in enumerate(data.get("projects") or []):
         yield f"project[{i}].name", p.get("name")
         yield f"project '{p.get('name', i)}'", p.get("description")
